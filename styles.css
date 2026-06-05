@@ -1,0 +1,300 @@
+/* NotePic OSS plugin styles */
+
+.mdoss-modal {
+  width: min(880px, 95vw);
+  max-height: 80vh;
+}
+
+.mdoss-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mdoss-filter-chip {
+  font-size: var(--font-ui-smaller);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.mdoss-filter-chip.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.mdoss-filter-chip[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mdoss-select-all {
+  margin-left: auto;
+  font-size: var(--font-ui-smaller);
+}
+
+.mdoss-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.mdoss-row {
+  display: grid;
+  grid-template-columns: auto 64px 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.mdoss-row[data-disabled="true"] {
+  opacity: 0.55;
+}
+
+.mdoss-row input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.mdoss-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--background-primary);
+}
+
+.mdoss-thumb-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-primary);
+  color: var(--text-faint);
+  font-size: 0.7rem;
+}
+
+.mdoss-meta {
+  min-width: 0;
+}
+
+.mdoss-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mdoss-sub {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mdoss-badge {
+  font-size: var(--font-ui-smaller);
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.mdoss-badge.is-local { background: var(--background-modifier-success); color: var(--text-success); }
+.mdoss-badge.is-oss { background: var(--background-modifier-active-hover); color: var(--text-accent); }
+.mdoss-badge.is-remote { background: var(--background-modifier-border); }
+.mdoss-badge.is-missing { background: var(--background-modifier-error); color: var(--text-error); }
+
+.mdoss-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.mdoss-progress {
+  flex: 1;
+  height: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mdoss-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--interactive-accent);
+  transition: width 0.2s ease;
+}
+
+.mdoss-failure-list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.mdoss-failure-row {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+}
+
+.mdoss-warn {
+  color: var(--text-warning);
+  font-size: var(--font-ui-smaller);
+  margin-top: 0.25rem;
+}
+
+.mdoss-required {
+  color: var(--text-error);
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+.mdoss-required-hint {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin: -0.25rem 0 0.75rem 0;
+}
+
+.mdoss-required-hint .mdoss-required {
+  margin-left: 0;
+  margin-right: 2px;
+}
+
+/* --- Side panel (ImagePanelView) ------------------------------------ */
+
+.mdoss-panel {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mdoss-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mdoss-panel-title {
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.mdoss-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mdoss-panel-icon-btn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.mdoss-panel-icon-btn:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.mdoss-panel-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Override the modal-tuned list inside the panel: take all remaining height
+ * instead of a viewport-percentage cap. */
+.mdoss-panel-list {
+  max-height: none;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Narrow-panel grid: drop the modal's extra trailing column. */
+.mdoss-panel-row {
+  grid-template-columns: auto 40px 1fr auto auto;
+  gap: 0.5rem;
+  padding: 0.4rem;
+}
+
+.mdoss-panel-thumb {
+  width: 40px;
+  height: 40px;
+}
+
+.mdoss-panel-domain {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* In the narrow panel, the modal-era badge styling collapses to an unreadable
+ * solid block because --background-modifier-success and --text-success are
+ * too close in many themes. Override with low-opacity tints + Obsidian's
+ * named accent colors so the text is always legible. */
+.mdoss-panel .mdoss-badge {
+  font-weight: 500;
+}
+.mdoss-panel .mdoss-badge.is-local {
+  background: rgba(var(--color-green-rgb), 0.18);
+  color: var(--color-green);
+}
+.mdoss-panel .mdoss-badge.is-remote {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+.mdoss-panel .mdoss-badge.is-oss {
+  background: rgba(var(--color-purple-rgb), 0.18);
+  color: var(--color-purple);
+}
+.mdoss-panel .mdoss-badge.is-missing {
+  background: rgba(var(--color-red-rgb), 0.18);
+  color: var(--color-red);
+}
+
+.mdoss-panel-row-action {
+  display: flex;
+  align-items: center;
+}
+
+.mdoss-panel-empty,
+.mdoss-panel-no-match {
+  padding: 1.5rem 1rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: var(--font-ui-small);
+}
+
+.mdoss-panel-footer {
+  margin-top: auto;
+}
+
+.mdoss-panel-counter {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-right: auto;
+}

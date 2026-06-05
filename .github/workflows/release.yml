@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify manifest version matches tag
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          MANIFEST=$(node -p "require('./manifest.json').version")
+          if [ "$VERSION" != "$MANIFEST" ]; then
+            echo "Tag version '$VERSION' does not match manifest version '$MANIFEST'"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package plugin bundle
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          STAGE="notepic-oss"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp main.js manifest.json styles.css "$STAGE/"
+          zip -r "NotePic-OSS-Obsidian-${VERSION}.zip" "$STAGE"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: NotePic-OSS-Obsidian v${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          files: |
+            NotePic-OSS-Obsidian-${{ steps.ver.outputs.version }}.zip
+            main.js
+            manifest.json
+            styles.css
+          body: |
+            ## Install
+
+            Download `main.js`, `manifest.json`, and `styles.css`, then place them in:
+
+            ```text
+            <your vault>/.obsidian/plugins/notepic-oss/
+            ```
+
+            The tag name must match `manifest.json.version` for Obsidian community plugin releases.
