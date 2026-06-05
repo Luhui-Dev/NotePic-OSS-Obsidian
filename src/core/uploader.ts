@@ -2,15 +2,9 @@
 //   key = `${prefix}/${sha256(data)[:24]}${ext}`  (prefix is optional)
 //   short-circuit via headObject(key)
 //   isOwnUrl tests custom_domain OR `${bucket}.${endpoint}`
-//
-// We use ali-oss in its browser build, which bundles its own SHA / xml2js and
-// avoids Node 'fs'/'stream' dependencies. esbuild --platform=browser will pick
-// up the package's `browser` field automatically.
 
+import { requestUrl } from "obsidian";
 import { sha256Hex24 } from "../util/hash";
-import type OSS from "ali-oss";
-
-type OSSClient = InstanceType<typeof OSS>;
 
 export interface UploaderConfig {
   accessKeyId: string;
@@ -34,29 +28,11 @@ const MIME: Record<string, string> = {
 };
 
 function hostFromEndpoint(endpoint: string): string {
-  return endpoint.replace(/^https?:\/\//, "");
+  return endpoint.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 }
 
 export class Uploader {
-  private client: OSSClient | null = null;
-
   constructor(public readonly config: UploaderConfig) {}
-
-  private async ensureClient(): Promise<OSSClient> {
-    if (this.client) return this.client;
-    // Dynamic import keeps the ali-oss module out of the cold-load path for
-    // users who never trigger an upload.
-    const mod = await import("ali-oss");
-    const OSSClientCtor = mod.default;
-    this.client = new OSSClientCtor({
-      accessKeyId: this.config.accessKeyId,
-      accessKeySecret: this.config.accessKeySecret,
-      endpoint: this.config.endpoint,
-      bucket: this.config.bucket,
-      secure: true,
-    });
-    return this.client!;
-  }
 
   private buildKey(hash: string, ext: string): string {
     const e = ext.startsWith(".") ? ext.toLowerCase() : "." + ext.toLowerCase();
@@ -74,6 +50,11 @@ export class Uploader {
     return `https://${this.config.bucket}.${host}/${key}`;
   }
 
+  private requestUrlForKey(key: string): string {
+    const host = hostFromEndpoint(this.config.endpoint);
+    return `https://${this.config.bucket}.${host}/${encodeObjectKey(key)}`;
+  }
+
   isOwnUrl(url: string): boolean {
     if (!url) return false;
     if (this.config.customDomain && url.includes(this.config.customDomain)) return true;
@@ -85,12 +66,11 @@ export class Uploader {
   async upload(bytes: Uint8Array, ext: string): Promise<string> {
     const hash = await sha256Hex24(bytes);
     const key = this.buildKey(hash, ext);
-    const client = await this.ensureClient();
 
     // Short-circuit if the object already exists.
     let exists = false;
     try {
-      await client.head(key);
+      await this.request("HEAD", key);
       exists = true;
     } catch (e: unknown) {
       const status = (e as { status?: number; code?: string })?.status;
@@ -106,10 +86,7 @@ export class Uploader {
       const headers: Record<string, string> = {};
       const mime = MIME[normalised];
       if (mime) headers["Content-Type"] = mime;
-      // ali-oss browser build accepts Blob / Buffer / File. Use Blob — it's
-      // built from a plain Uint8Array view, no Node Buffer required.
-      const blob = new Blob([bytes as BlobPart], { type: headers["Content-Type"] || "application/octet-stream" });
-      await client.put(key, blob, { headers });
+      await this.request("PUT", key, headers, toArrayBuffer(bytes));
     }
 
     return this.buildUrl(key);
@@ -117,11 +94,92 @@ export class Uploader {
 
   /** Probe: PUT then HEAD then DELETE a 1-byte object to validate creds + CORS. */
   async probe(): Promise<void> {
-    const client = await this.ensureClient();
     const key = (this.config.prefix ? this.config.prefix + "/" : "") + ".notepic-oss-probe";
-    const blob = new Blob([new Uint8Array([0x4f]) as BlobPart], { type: "text/plain" });
-    await client.put(key, blob, { headers: { "Content-Type": "text/plain" } });
-    await client.head(key);
-    await client.delete(key);
+    const headers = { "Content-Type": "text/plain" };
+    await this.request("PUT", key, headers, new Uint8Array([0x4f]).buffer);
+    await this.request("HEAD", key);
+    await this.request("DELETE", key);
   }
+
+  private async request(
+    method: "HEAD" | "PUT" | "DELETE",
+    key: string,
+    headers: Record<string, string> = {},
+    body?: ArrayBuffer,
+  ): Promise<void> {
+    const date = new Date().toUTCString();
+    const signedHeaders: Record<string, string> = { ...headers, Date: date };
+    signedHeaders.Authorization = await this.authorization(method, key, signedHeaders);
+    const response = await requestUrl({
+      url: this.requestUrlForKey(key),
+      method,
+      headers: signedHeaders,
+      body,
+      throw: false,
+    });
+
+    if (response.status >= 200 && response.status < 300) return;
+    throw ossError(response.status, response.text);
+  }
+
+  private async authorization(
+    method: "HEAD" | "PUT" | "DELETE",
+    key: string,
+    headers: Record<string, string>,
+  ): Promise<string> {
+    const contentType = headers["Content-Type"] ?? "";
+    const canonicalResource = `/${this.config.bucket}/${key}`;
+    const stringToSign = [
+      method,
+      "",
+      contentType,
+      headers.Date,
+      canonicalResource,
+    ].join("\n");
+    const signature = await hmacSha1Base64(this.config.accessKeySecret, stringToSign);
+    return `OSS ${this.config.accessKeyId}:${signature}`;
+  }
+}
+
+function encodeObjectKey(key: string): string {
+  return key.split("/").map(encodeURIComponent).join("/");
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buf = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buf).set(bytes);
+  return buf;
+}
+
+async function hmacSha1Base64(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return base64(new Uint8Array(signature));
+}
+
+function base64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function ossError(status: number, body: string): Error & { status?: number; code?: string } {
+  const code = extractXmlTag(body, "Code");
+  const message = extractXmlTag(body, "Message") || `OSS request failed with HTTP ${status}`;
+  const error = new Error(message) as Error & { status?: number; code?: string };
+  error.status = status;
+  if (code) error.code = code;
+  return error;
+}
+
+function extractXmlTag(xml: string, tag: string): string {
+  const match = new RegExp(`<${tag}>([^<]*)</${tag}>`).exec(xml);
+  return match?.[1] ?? "";
 }
