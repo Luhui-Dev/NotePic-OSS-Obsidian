@@ -3,7 +3,7 @@
 // flow, but lives in a workspace leaf so it can be pinned, reopened, and
 // tracked against the active file.
 
-import { ItemView, MarkdownView, TFile, WorkspaceLeaf, setIcon, setTooltip } from "obsidian";
+import { ItemView, MarkdownView, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import type NotePicOssPlugin from "../main";
 import { scanNote, type ScannedItem } from "../core/pipeline";
 import { Uploader } from "../core/uploader";
@@ -214,7 +214,7 @@ export class ImagePanelView extends ItemView {
     const actions = header.createDiv({ cls: "mdoss-panel-actions" });
     const refresh = actions.createEl("button", { cls: "clickable-icon mdoss-panel-icon-btn" });
     setIcon(refresh, "refresh-cw");
-    setTooltip(refresh, T.refresh);
+    setButtonTooltip(refresh, T.refresh);
     refresh.onclick = () => void this.rescan({ resetSelection: false });
   }
 
@@ -326,7 +326,7 @@ export class ImagePanelView extends ItemView {
     if (this.canSelect(item) && !isOwnRemote(item, this.displayUploader)) {
       const btn = actionCell.createEl("button", { cls: "clickable-icon mdoss-panel-icon-btn" });
       setIcon(btn, isBusy ? "loader" : "upload");
-      setTooltip(btn, isBusy ? t().panel.uploadingRow : t().panel.uploadRow);
+      setButtonTooltip(btn, isBusy ? t().panel.uploadingRow : t().panel.uploadRow);
       btn.disabled = isBusy;
       btn.onclick = () => void this.uploadSingle(item);
     }
@@ -487,6 +487,11 @@ function badgeClass(it: ScannedItem, uploader: Uploader | null): string {
     case "missing": return "is-missing";
     case "skip": return "is-remote";
   }
+}
+
+function setButtonTooltip(button: HTMLElement, tooltip: string): void {
+  button.setAttr("aria-label", tooltip);
+  button.setAttr("title", tooltip);
 }
 
 /**

@@ -19,7 +19,11 @@ export function pLimit(max: number): Limit {
         active++;
         fn().then(
           (v) => { active--; next(); resolve(v); },
-          (e) => { active--; next(); reject(e); },
+          (e: unknown) => {
+            active--;
+            next();
+            reject(e instanceof Error ? e : new Error(String(e)));
+          },
         );
       };
       if (active < max) run();

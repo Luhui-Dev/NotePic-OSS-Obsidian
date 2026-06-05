@@ -1,7 +1,4 @@
-// Tiny i18n helper. Obsidian persists the chosen interface language in
-// localStorage under the key "language" — values are codes like "en", "zh",
-// "zh-TW", "fr", etc. We only ship Chinese and English; anything starting
-// with "zh" maps to Chinese, everything else falls back to English.
+import { getLanguage } from "obsidian";
 
 type Lang = "en" | "zh";
 
@@ -10,7 +7,7 @@ let cached: Lang | null = null;
 function detectLang(): Lang {
   if (cached) return cached;
   try {
-    const v = window?.localStorage?.getItem("language");
+    const v = getLanguage();
     if (v && v.toLowerCase().startsWith("zh")) return (cached = "zh");
   } catch {
     /* not in a renderer (unit tests) — fall through */
@@ -85,8 +82,8 @@ const en = {
     safety_ram:
       "Use a dedicated RAM sub-account with only oss:PutObject / oss:GetObject / oss:HeadObject / oss:DeleteObject on the target bucket.",
     safety_storage:
-      "Credentials are stored in plaintext at .obsidian/plugins/notepic-oss/data.json. " +
-      "If your vault is in a public Git repo, add that path to your vault's .gitignore.",
+      "Credentials are stored in plaintext in the plugin data file inside your vault's configuration folder. " +
+      "If your vault is in a public Git repo, add that plugin data path to your vault's .gitignore.",
     safety_cors_prefix:
       "CORS rule on the bucket (Aliyun OSS console): Allowed origins ",
     safety_cors_origin_and: " and ",
@@ -216,8 +213,8 @@ const zh: typeof en = {
     safety_ram:
       "建议使用专门的 RAM 子账号，只授予目标 Bucket 的 oss:PutObject / oss:GetObject / oss:HeadObject / oss:DeleteObject 权限。",
     safety_storage:
-      "凭据以明文保存在 .obsidian/plugins/notepic-oss/data.json。" +
-      "如果你的 Vault 是公开 Git 仓库，请把这个路径加进 Vault 的 .gitignore。",
+      "凭据以明文保存在 Vault 配置目录下的插件 data.json 文件中。" +
+      "如果你的 Vault 是公开 Git 仓库，请把这个插件数据路径加进 Vault 的 .gitignore。",
     safety_cors_prefix:
       "Bucket 的 CORS 规则（阿里云 OSS 控制台）：来源 ",
     safety_cors_origin_and: " 或 ",

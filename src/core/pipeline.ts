@@ -3,7 +3,7 @@
 // Editor writeback is done by the caller (UI layer) using the offsets in
 // ImageRef.from/to, so the pipeline doesn't depend on any editor instance.
 
-import { App, TFile } from "obsidian";
+import { App, TFile, requestUrl } from "obsidian";
 import type { ImageRef } from "./scanner";
 import { scan } from "./scanner";
 import { Resolver, ResolveResult } from "./resolver";
@@ -67,11 +67,13 @@ async function readBytes(app: App, target: TFile): Promise<Uint8Array> {
 }
 
 async function fetchRemoteBytes(url: string, signal?: AbortSignal): Promise<{ bytes: Uint8Array; ext: string }> {
-  const resp = await fetch(url, { signal });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-  const ab = await resp.arrayBuffer();
+  if (signal?.aborted) throw new Error("Request cancelled");
+  const resp = await requestUrl(url);
+  if (signal?.aborted) throw new Error("Request cancelled");
+  if (resp.status < 200 || resp.status >= 300) throw new Error(`HTTP ${resp.status}`);
+  const ab = resp.arrayBuffer;
   // Try Content-Type first, fall back to URL ext.
-  const ct = resp.headers.get("Content-Type") || "";
+  const ct = resp.headers["Content-Type"] ?? resp.headers["content-type"] ?? "";
   let ext = "";
   if (ct.includes("png")) ext = ".png";
   else if (ct.includes("jpeg") || ct.includes("jpg")) ext = ".jpg";

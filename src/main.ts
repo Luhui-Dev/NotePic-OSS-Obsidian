@@ -119,7 +119,7 @@ export default class NotePicOssPlugin extends Plugin {
       }
       await leaf.setViewState({ type: VIEW_TYPE_NOTEPIC_OSS_PANEL, active: true });
     }
-    workspace.revealLeaf(leaf);
+    workspace.setActiveLeaf(leaf);
   }
 
   /**

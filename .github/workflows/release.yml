@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  attestations: write
+  id-token: write
 
 jobs:
   build-and-release:
@@ -40,15 +42,6 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Package plugin bundle
-        run: |
-          VERSION="${{ steps.ver.outputs.version }}"
-          STAGE="notepic-oss"
-          rm -rf "$STAGE"
-          mkdir -p "$STAGE"
-          cp main.js manifest.json styles.css "$STAGE/"
-          zip -r "NotePic-OSS-Obsidian-${VERSION}.zip" "$STAGE"
-
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -56,7 +49,6 @@ jobs:
           name: NotePic-OSS-Obsidian v${{ steps.ver.outputs.version }}
           generate_release_notes: true
           files: |
-            NotePic-OSS-Obsidian-${{ steps.ver.outputs.version }}.zip
             main.js
             manifest.json
             styles.css
@@ -70,3 +62,11 @@ jobs:
             ```
 
             The tag name must match `manifest.json.version` for Obsidian community plugin releases.
+
+      - name: Attest release assets
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css

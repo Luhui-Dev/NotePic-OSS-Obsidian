@@ -5,8 +5,8 @@
 
 export async function sha256Hex24(bytes: ArrayBuffer | Uint8Array): Promise<string> {
   const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  // crypto.subtle wants an ArrayBuffer-like view; pass a copy slice to be safe.
-  const buf = view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
+  const buf = new ArrayBuffer(view.byteLength);
+  new Uint8Array(buf).set(view);
   const digest = await crypto.subtle.digest("SHA-256", buf);
   const arr = new Uint8Array(digest);
   let hex = "";

@@ -11,24 +11,31 @@ export class FailureModal extends Modal {
     const { contentEl } = this;
     const F = t().failure;
     contentEl.empty();
-    contentEl.createEl("h3", { text: F.title(this.failures.length) });
+    new Setting(contentEl).setName(F.title(this.failures.length)).setHeading();
 
     const list = contentEl.createDiv({ cls: "mdoss-failure-list" });
     for (const f of this.failures) {
       const row = list.createDiv({ cls: "mdoss-failure-row" });
-      row.createEl("div", { text: f.ref.rawUrl, attr: { style: "font-weight:600;" } });
+      row.createEl("div", { text: f.ref.rawUrl, cls: "mdoss-failure-url" });
       row.createEl("div", { text: f.reason || F.noReason });
     }
 
     new Setting(contentEl)
       .addButton((b) =>
-        b.setButtonText(F.copy).onClick(async () => {
+        b.setButtonText(F.copy).onClick(() => {
           const text = this.failures
             .map((f) => `${f.ref.rawUrl}\t${f.reason ?? ""}`)
             .join("\n");
-          await navigator.clipboard.writeText(text);
-          b.setButtonText(F.copied);
-          setTimeout(() => b.setButtonText(F.copy), 1500);
+          navigator.clipboard.writeText(text)
+            .then(() => {
+              b.setButtonText(F.copied);
+              window.setTimeout(() => {
+                b.setButtonText(F.copy);
+              }, 1500);
+            })
+            .catch((error: unknown) => {
+              console.error("NotePic OSS: failed to copy upload failures", error);
+            });
         }),
       )
       .addButton((b) => b.setButtonText(F.close).setCta().onClick(() => this.close()));

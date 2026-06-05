@@ -64,10 +64,13 @@ export class NotePicOssSettingTab extends PluginSettingTab {
     const N = t().notice;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: S.section_credentials });
+    new Setting(containerEl).setName(S.section_credentials).setHeading();
 
     // Hint: "标 * 为必填项。" / "Fields marked with * are required."
     const hint = containerEl.createEl("div", { cls: "mdoss-required-hint" });
+    hint.appendText(S.required_hint_prefix);
+    hint.createEl("span", { text: "*", cls: "mdoss-required" });
+    hint.appendText(S.required_hint);
 
     const markRequired = (setting: Setting) => {
       setting.nameEl.createEl("span", { text: "*", cls: "mdoss-required" });
@@ -157,7 +160,7 @@ export class NotePicOssSettingTab extends PluginSettingTab {
           }),
       );
 
-    containerEl.createEl("h2", { text: S.section_upload });
+    new Setting(containerEl).setName(S.section_upload).setHeading();
 
     new Setting(containerEl)
       .setName(S.compress_name)
@@ -207,7 +210,7 @@ export class NotePicOssSettingTab extends PluginSettingTab {
           }),
       );
 
-    containerEl.createEl("h2", { text: S.section_connection });
+    new Setting(containerEl).setName(S.section_connection).setHeading();
 
     new Setting(containerEl)
       .setName(S.test_name)
@@ -233,7 +236,7 @@ export class NotePicOssSettingTab extends PluginSettingTab {
         }),
       );
 
-    containerEl.createEl("h2", { text: S.section_safety });
+    new Setting(containerEl).setName(S.section_safety).setHeading();
 
     const safetyEl = containerEl.createEl("div", {
       cls: "setting-item-description",

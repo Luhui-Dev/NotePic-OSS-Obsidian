@@ -1,17 +1,32 @@
-// Minimal ambient declarations for npm packages we only use through a thin wrapper.
-// Keeping these as `any` is intentional — neither library ships first-party types
-// we want to take a dependency on, and the wrappers (`uploader.ts`, `compressor.ts`)
-// constrain the surface we actually call.
-
 declare module "ali-oss" {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const OSS: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  export default OSS;
+  export interface OSSOptions {
+    accessKeyId: string;
+    accessKeySecret: string;
+    endpoint: string;
+    bucket: string;
+    secure?: boolean;
+  }
+
+  export interface PutOptions {
+    headers?: Record<string, string>;
+  }
+
+  export default class OSS {
+    constructor(options: OSSOptions);
+    head(name: string): Promise<unknown>;
+    put(name: string, file: Blob, options?: PutOptions): Promise<unknown>;
+    delete(name: string): Promise<unknown>;
+  }
 }
 
 declare module "upng-js" {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const UPNG: any;
+  const UPNG: {
+    encode(
+      buffers: Array<ArrayBufferLike>,
+      width: number,
+      height: number,
+      colors: number,
+    ): ArrayBuffer;
+  };
   export default UPNG;
 }

@@ -64,20 +64,6 @@ function isInsideSpan(spans: SkipSpan[], pos: number): boolean {
   return false;
 }
 
-function findAll(content: string, re: RegExp, skip: SkipSpan[]): ImageRef[] {
-  // Caller owns the regex; clone with global flag to walk all matches.
-  const flags = re.flags.includes("g") ? re.flags : re.flags + "g";
-  const r = new RegExp(re.source, flags);
-  const out: ImageRef[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = r.exec(content)) !== null) {
-    if (m[0].length === 0) { r.lastIndex++; continue; }
-    if (isInsideSpan(skip, m.index)) continue;
-    out.push(matchToRef(m));
-  }
-  return out;
-}
-
 function matchToRef(m: RegExpExecArray): ImageRef {
   // We disambiguate by which regex produced the match via the groups present.
   const g = m.groups || {};

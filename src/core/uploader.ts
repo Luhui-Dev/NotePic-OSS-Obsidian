@@ -7,11 +7,10 @@
 // avoids Node 'fs'/'stream' dependencies. esbuild --platform=browser will pick
 // up the package's `browser` field automatically.
 
-// ali-oss has no first-party types we want to lean on; declare narrowly.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type OSSClient = any;
-
 import { sha256Hex24 } from "../util/hash";
+import type OSS from "ali-oss";
+
+type OSSClient = InstanceType<typeof OSS>;
 
 export interface UploaderConfig {
   accessKeyId: string;
@@ -48,9 +47,8 @@ export class Uploader {
     // Dynamic import keeps the ali-oss module out of the cold-load path for
     // users who never trigger an upload.
     const mod = await import("ali-oss");
-    const OSS = (mod as { default?: unknown }).default ?? mod;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.client = new (OSS as any)({
+    const OSSClientCtor = mod.default;
+    this.client = new OSSClientCtor({
       accessKeyId: this.config.accessKeyId,
       accessKeySecret: this.config.accessKeySecret,
       endpoint: this.config.endpoint,

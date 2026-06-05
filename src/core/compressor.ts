@@ -6,9 +6,6 @@
 // All work happens in the Electron renderer using the DOM Image / OffscreenCanvas
 // APIs — no native modules, no postinstall.
 
-// upng-js ships as CommonJS without bundled types.
-// We declare a minimal shape so esbuild + tsc don't complain.
-// @ts-ignore
 import UPNG from "upng-js";
 
 export interface CompressResult {
@@ -64,7 +61,7 @@ async function encodeViaCanvas(
     ctx.drawImage(bitmap, 0, 0);
     blob = await canvas.convertToBlob({ type, quality: quality / 100 });
   } else {
-    const canvas = document.createElement("canvas");
+    const canvas = activeDocument.createElement("canvas");
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
     const ctx = canvas.getContext("2d");
@@ -89,7 +86,7 @@ async function encodePngViaUpng(bitmap: ImageBitmap): Promise<Uint8Array | null>
     ctx.drawImage(bitmap, 0, 0);
     imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
   } else {
-    const canvas = document.createElement("canvas");
+    const canvas = activeDocument.createElement("canvas");
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
     const ctx = canvas.getContext("2d");

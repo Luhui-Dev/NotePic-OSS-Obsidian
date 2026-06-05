@@ -141,6 +141,32 @@
   transition: width 0.2s ease;
 }
 
+.mdoss-progress-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.mdoss-progress-label {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 4px;
+}
+
+.mdoss-progress-notice {
+  width: 240px;
+  height: 6px;
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mdoss-progress-notice-bar {
+  height: 100%;
+  width: var(--mdoss-progress-width, 0%);
+  background: var(--interactive-accent);
+  transition: width 0.2s;
+}
+
 .mdoss-failure-list {
   max-height: 50vh;
   overflow-y: auto;
@@ -151,6 +177,10 @@
   border-bottom: 1px solid var(--background-modifier-border);
   font-family: var(--font-monospace);
   font-size: var(--font-ui-smaller);
+}
+
+.mdoss-failure-url {
+  font-weight: 600;
 }
 
 .mdoss-warn {
