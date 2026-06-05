@@ -2,7 +2,7 @@
   "id": "notepic-oss",
   "name": "NotePic OSS",
   "version": "1.1.1",
-  "minAppVersion": "1.4.0",
+  "minAppVersion": "1.8.7",
   "description": "Upload images referenced in the current note to Aliyun OSS, compress them first, and rewrite the links in place.",
   "author": "Luhui Dev",
   "authorUrl": "https://github.com/Luhui-Dev",

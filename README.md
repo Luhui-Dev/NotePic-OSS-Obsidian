@@ -3,7 +3,7 @@
 > Upload images referenced in the current Obsidian note to Aliyun OSS, then rewrite links in place.
 
 [![License](https://img.shields.io/github/license/Luhui-Dev/NotePic-OSS-Obsidian)](LICENSE)
-[![Obsidian](https://img.shields.io/badge/Obsidian-1.4%2B-7c3aed)](https://obsidian.md/)
+[![Obsidian](https://img.shields.io/badge/Obsidian-1.8.7%2B-7c3aed)](https://obsidian.md/)
 [![Release](https://img.shields.io/github/v/release/Luhui-Dev/NotePic-OSS-Obsidian)](https://github.com/Luhui-Dev/NotePic-OSS-Obsidian/releases)
 
 **Made by [@LuhuiDev](https://luhuidev.com) · Part of [LuhuiDev Toolkit](https://luhuidev.com)**
