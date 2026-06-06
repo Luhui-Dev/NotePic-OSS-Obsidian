@@ -5,6 +5,7 @@
 [![License](https://img.shields.io/github/license/Luhui-Dev/NotePic-OSS-Obsidian)](LICENSE)
 [![Obsidian](https://img.shields.io/badge/Obsidian-1.8.7%2B-7c3aed)](https://obsidian.md/)
 [![Release](https://img.shields.io/github/v/release/Luhui-Dev/NotePic-OSS-Obsidian)](https://github.com/Luhui-Dev/NotePic-OSS-Obsidian/releases)
+[![Community Plugin](https://img.shields.io/badge/Obsidian%20Community%20Plugin-NotePic%20OSS-7c3aed)](https://community.obsidian.md/plugins/notepic-oss)
 
 **Made by [@LuhuiDev](https://luhuidev.com) · Part of [LuhuiDev Toolkit](https://luhuidev.com)**
 
@@ -14,13 +15,14 @@ NotePic OSS Obsidian 是 NotePic OSS 的 Obsidian 插件实现。它会扫描当
 
 ## 快速开始
 
-插件尚未提交到 Obsidian 社区插件市场，当前使用手动安装。
+NotePic OSS 已发布到 Obsidian 社区插件目录。
 
-1. 从 [GitHub Releases](https://github.com/Luhui-Dev/NotePic-OSS-Obsidian/releases) 下载 `main.js`、`manifest.json`、`styles.css`。
-2. 放到 `<你的 Vault>/.obsidian/plugins/notepic-oss/`。
-3. 重启 Obsidian，或在第三方插件设置中重新加载插件。
-4. 打开 **设置 → 第三方插件**，关闭 Restricted mode，并启用 NotePic OSS。
-5. 打开 **设置 → NotePic OSS**，填写 OSS 配置并运行连接测试。
+1. 打开 **Settings → Community plugins → Browse**。
+2. 搜索 `NotePic OSS`，或打开 [官方插件页](https://community.obsidian.md/plugins/notepic-oss)。
+3. 安装并启用 NotePic OSS。
+4. 打开 **Settings → NotePic OSS**，填写 OSS 配置并运行连接测试。
+
+如果需要手动安装，可以从 [GitHub Releases](https://github.com/Luhui-Dev/NotePic-OSS-Obsidian/releases) 下载 `main.js`、`manifest.json`、`styles.css`，放到 `<你的 Vault>/.obsidian/plugins/notepic-oss/`，再在第三方插件设置中重新加载并启用插件。
 
 ## 特性
 
