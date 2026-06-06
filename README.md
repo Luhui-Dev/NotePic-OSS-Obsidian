@@ -7,7 +7,7 @@
 [![Release](https://img.shields.io/github/v/release/Luhui-Dev/NotePic-OSS-Obsidian)](https://github.com/Luhui-Dev/NotePic-OSS-Obsidian/releases)
 [![Community Plugin](https://img.shields.io/badge/Obsidian%20Community%20Plugin-NotePic%20OSS-7c3aed)](https://community.obsidian.md/plugins/notepic-oss)
 
-**Made by [@LuhuiDev](https://luhuidev.com) · Part of [LuhuiDev Toolkit](https://luhuidev.com)**
+**Made by [@LuhuiDev](https://luhuidev.com)**
 
 NotePic OSS Obsidian 是 NotePic OSS 的 Obsidian 插件实现。它会扫描当前笔记中的图片引用，在 Obsidian 内完成压缩、去重、上传到阿里云 OSS，并把链接原地替换为公网 URL。
 
