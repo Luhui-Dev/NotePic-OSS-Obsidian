@@ -3,9 +3,10 @@
 // flow, but lives in a workspace leaf so it can be pinned, reopened, and
 // tracked against the active file.
 
-import { ItemView, MarkdownView, TFile, WorkspaceLeaf, setIcon } from "obsidian";
+import { ItemView, MarkdownView, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import type NotePicOssPlugin from "../main";
 import { scanNote, type ScannedItem } from "../core/pipeline";
+import { scanVaultImageAssets, type ImageAsset } from "../core/assetScanner";
 import { Uploader } from "../core/uploader";
 import { buildUploaderConfig } from "../settings";
 import { collectSizes, fmtSize } from "../util/sizes";
@@ -13,7 +14,9 @@ import { t } from "../i18n";
 
 export const VIEW_TYPE_NOTEPIC_OSS_PANEL = "notepic-oss-panel";
 
+type PanelMode = "note" | "assets";
 type Filter = "all" | "local" | "pending" | "missing";
+type AssetFilter = "all" | "unreferenced" | "referenced";
 
 const SUPPORTED_EXTS = new Set(["md", "mdx", "markdown", "html", "htm"]);
 
@@ -31,6 +34,12 @@ export class ImagePanelView extends ItemView {
   private checked = new Set<string>();
   private busyItems = new Set<string>();
   private filter: Filter = "all";
+  private mode: PanelMode = "note";
+  private assetFilter: AssetFilter = "unreferenced";
+  private assets: ImageAsset[] = [];
+  private assetChecked = new Set<string>();
+  private expandedFolders = new Set<string>();
+  private assetsBusy = false;
   private scanToken = 0;
   // Signature of the last rendered item list — when an incoming rescan has
   // the same signature we skip the DOM rebuild entirely. Avoids flicker when
@@ -61,6 +70,7 @@ export class ImagePanelView extends ItemView {
     // We only react when the change is for the file we're currently showing.
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
+        if (this.mode === "assets") return;
         if (!this.currentFile || file.path !== this.currentFile.path) return;
         void this.rescan({ resetSelection: false });
       }),
@@ -76,7 +86,13 @@ export class ImagePanelView extends ItemView {
 
   /** Public: called by the plugin after an external upload completed for our file. */
   async refresh(): Promise<void> {
-    await this.rescan({ resetSelection: false });
+    if (this.mode === "assets") await this.rescanAssets({ resetSelection: false });
+    else await this.rescan({ resetSelection: false });
+  }
+
+  async showVaultAssets(): Promise<void> {
+    this.mode = "assets";
+    await this.rescanAssets({ resetSelection: false });
   }
 
   // ---- file tracking ------------------------------------------------------
@@ -87,6 +103,10 @@ export class ImagePanelView extends ItemView {
     this.checked.clear();
     this.busyItems.clear();
     this.lastSignature = null;
+    if (this.mode === "assets") {
+      this.render();
+      return;
+    }
     await this.rescan({ resetSelection: true });
   }
 
@@ -182,6 +202,13 @@ export class ImagePanelView extends ItemView {
 
     this.renderHeader(contentEl);
 
+    this.renderModeTabs(contentEl);
+
+    if (this.mode === "assets") {
+      this.renderAssets(contentEl);
+      return;
+    }
+
     if (!this.currentFile) {
       this.renderEmpty(contentEl, t().panel.emptyNoFile);
       return;
@@ -215,7 +242,27 @@ export class ImagePanelView extends ItemView {
     const refresh = actions.createEl("button", { cls: "clickable-icon mdoss-panel-icon-btn" });
     setIcon(refresh, "refresh-cw");
     setButtonTooltip(refresh, T.refresh);
-    refresh.onclick = () => void this.rescan({ resetSelection: false });
+    refresh.onclick = () => void this.refresh();
+  }
+
+  private renderModeTabs(parent: HTMLElement): void {
+    const T = t().panel;
+    const tabs = parent.createDiv({ cls: "mdoss-panel-tabs" });
+    const options: Array<[PanelMode, string]> = [
+      ["note", T.tabNote],
+      ["assets", T.tabAssets],
+    ];
+    for (const [mode, label] of options) {
+      const tab = tabs.createEl("button", { text: label });
+      tab.addClass("mdoss-panel-tab");
+      if (mode === this.mode) tab.addClass("is-active");
+      tab.onclick = () => {
+        if (this.mode === mode) return;
+        this.mode = mode;
+        if (mode === "assets") void this.rescanAssets({ resetSelection: false });
+        else void this.rescan({ resetSelection: true });
+      };
+    }
   }
 
   private renderEmpty(parent: HTMLElement, text: string): void {
@@ -405,6 +452,257 @@ export class ImagePanelView extends ItemView {
   private canSelect(item: ScannedItem): boolean {
     return item.resolved.status === "local" || item.resolved.status === "remote";
   }
+
+  // ---- vault assets -------------------------------------------------------
+
+  private async rescanAssets(opts: { resetSelection: boolean }): Promise<void> {
+    const token = ++this.scanToken;
+    this.assetsBusy = true;
+    this.render();
+    try {
+      const assets = await scanVaultImageAssets(this.app);
+      if (token !== this.scanToken) return;
+      this.assets = assets;
+      if (this.expandedFolders.size === 0) {
+        for (const asset of assets) {
+          for (const folder of folderChain(asset.folder)) this.expandedFolders.add(folder);
+        }
+      }
+      if (opts.resetSelection) this.assetChecked.clear();
+      else this.pruneAssetSelection();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      new Notice(t().notice.assetScanFailed(msg), 8000);
+    } finally {
+      if (token === this.scanToken) {
+        this.assetsBusy = false;
+        this.render();
+      }
+    }
+  }
+
+  private renderAssets(parent: HTMLElement): void {
+    const T = t().panel.assets;
+    if (this.assetsBusy) {
+      this.renderEmpty(parent, T.scanning);
+      return;
+    }
+    this.renderAssetChips(parent);
+    const visible = this.visibleAssets();
+    const total = visible.reduce((sum, asset) => sum + asset.size, 0);
+    parent.createDiv({
+      cls: "mdoss-assets-summary",
+      text: T.summary(visible.length, fmtSize(total)),
+    });
+    if (this.assets.length === 0) {
+      this.renderEmpty(parent, T.empty);
+      return;
+    }
+    if (visible.length === 0) {
+      this.renderEmpty(parent, T.noMatch);
+      return;
+    }
+    const listEl = parent.createDiv({ cls: "mdoss-list mdoss-panel-list mdoss-assets-list" });
+    this.renderAssetTree(listEl, visible);
+    this.renderAssetFooter(parent);
+  }
+
+  private renderAssetChips(parent: HTMLElement): void {
+    const header = parent.createDiv({ cls: "mdoss-modal-header" });
+    const T = t().panel.assets;
+    const chips: Array<[AssetFilter, string]> = [
+      ["all", T.filterAll],
+      ["unreferenced", T.filterUnreferenced],
+      ["referenced", T.filterReferenced],
+    ];
+    for (const [key, label] of chips) {
+      const chip = header.createEl("span", { cls: "mdoss-filter-chip", text: label });
+      if (key === this.assetFilter) chip.addClass("is-active");
+      chip.onclick = () => {
+        this.assetFilter = key;
+        this.pruneAssetSelection();
+        this.render();
+      };
+    }
+    const selectAll = header.createEl("a", {
+      cls: "mdoss-select-all",
+      text: T.toggleVisible,
+      href: "#",
+    });
+    selectAll.onclick = (e) => {
+      e.preventDefault();
+      this.toggleAssets(this.visibleAssets());
+      this.render();
+    };
+  }
+
+  private renderAssetTree(parent: HTMLElement, assets: ImageAsset[]): void {
+    const root = buildAssetTree(assets);
+    for (const folder of root.folders.values()) this.renderFolder(parent, folder, 0);
+    for (const asset of root.assets) this.renderAssetRow(parent, asset, 0);
+  }
+
+  private renderFolder(parent: HTMLElement, folder: AssetTreeNode, depth: number): void {
+    const row = parent.createDiv({ cls: "mdoss-asset-folder" });
+    row.style.setProperty("--mdoss-depth", String(depth));
+    const expanded = this.expandedFolders.has(folder.path);
+    const toggle = row.createEl("button", { cls: "clickable-icon mdoss-panel-icon-btn" });
+    setIcon(toggle, expanded ? "chevron-down" : "chevron-right");
+    setButtonTooltip(toggle, expanded ? t().panel.assets.collapse : t().panel.assets.expand);
+    toggle.onclick = () => {
+      if (expanded) this.expandedFolders.delete(folder.path);
+      else this.expandedFolders.add(folder.path);
+      this.render();
+    };
+
+    const cb = row.createEl("input", { type: "checkbox" });
+    const folderAssets = collectTreeAssets(folder);
+    cb.checked = folderAssets.length > 0 && folderAssets.every((a) => this.assetChecked.has(a.path));
+    cb.onchange = () => {
+      this.toggleAssets(folderAssets, cb.checked);
+      this.render();
+    };
+    row.createSpan({ cls: "mdoss-asset-folder-name", text: folder.name || "/" });
+    row.createSpan({
+      cls: "mdoss-sub mdoss-asset-folder-meta",
+      text: t().panel.assets.folderSummary(
+        folderAssets.length,
+        fmtSize(folderAssets.reduce((sum, asset) => sum + asset.size, 0)),
+      ),
+    });
+
+    if (!expanded) return;
+    for (const child of folder.folders.values()) this.renderFolder(parent, child, depth + 1);
+    for (const asset of folder.assets) this.renderAssetRow(parent, asset, depth + 1);
+  }
+
+  private renderAssetRow(parent: HTMLElement, asset: ImageAsset, depth: number): void {
+    const row = parent.createDiv({ cls: "mdoss-row mdoss-panel-row mdoss-asset-row" });
+    row.style.setProperty("--mdoss-depth", String(depth));
+    const cb = row.createEl("input", { type: "checkbox" });
+    cb.checked = this.assetChecked.has(asset.path);
+    cb.onchange = () => {
+      if (cb.checked) this.assetChecked.add(asset.path);
+      else this.assetChecked.delete(asset.path);
+      this.updateAssetFooter();
+    };
+
+    const img = row.createEl("img", { cls: "mdoss-thumb mdoss-panel-thumb" });
+    img.src = this.app.vault.getResourcePath(asset.file);
+    img.loading = "lazy";
+    img.addClass("mdoss-openable-thumb");
+    setButtonTooltip(img, t().panel.assets.open);
+    img.onclick = () => void this.openAsset(asset);
+
+    const meta = row.createDiv({ cls: "mdoss-meta" });
+    const name = meta.createDiv({ cls: "mdoss-name mdoss-openable-text", text: asset.name });
+    name.setAttr("title", t().panel.assets.open);
+    name.onclick = () => void this.openAsset(asset);
+    const sub = meta.createDiv({ cls: "mdoss-sub" });
+    const path = sub.createSpan({ cls: "mdoss-openable-text", text: asset.path });
+    path.setAttr("title", t().panel.assets.open);
+    path.onclick = () => void this.openAsset(asset);
+    const sub2 = meta.createDiv({ cls: "mdoss-sub" });
+    sub2.createSpan({ text: fmtSize(asset.size) });
+    sub2.createSpan({
+      text: asset.references.length > 0
+        ? t().panel.assets.refCount(asset.references.length)
+        : t().panel.assets.noRefs,
+    });
+
+    row.createSpan({
+      cls: `mdoss-badge ${asset.status === "referenced" ? "is-local" : "is-missing"}`,
+      text: asset.status === "referenced" ? t().panel.assets.badgeReferenced : t().panel.assets.badgeUnreferenced,
+    });
+  }
+
+  private renderAssetFooter(parent: HTMLElement): void {
+    const footer = parent.createDiv({ cls: "mdoss-footer mdoss-panel-footer" });
+    const counter = footer.createSpan({ cls: "mdoss-panel-counter", text: "" });
+    const go = footer.createEl("button", { text: "" });
+    go.addClass("mod-warning");
+    go.onclick = () => void this.deleteSelectedAssets();
+    (this as unknown as { _assetCounter: HTMLElement; _assetGo: HTMLButtonElement })._assetCounter = counter;
+    (this as unknown as { _assetCounter: HTMLElement; _assetGo: HTMLButtonElement })._assetGo = go;
+    this.updateAssetFooter();
+  }
+
+  private updateAssetFooter(): void {
+    const ref = this as unknown as { _assetCounter?: HTMLElement; _assetGo?: HTMLButtonElement };
+    if (!ref._assetCounter || !ref._assetGo) return;
+    const selected = this.selectedAssets();
+    const size = selected.reduce((sum, asset) => sum + asset.size, 0);
+    const T = t().panel.assets;
+    ref._assetCounter.setText(T.selected(selected.length, fmtSize(size)));
+    ref._assetGo.setText(selected.length > 0 ? T.deleteN(selected.length) : T.delete);
+    ref._assetGo.disabled = selected.length === 0;
+  }
+
+  private visibleAssets(): ImageAsset[] {
+    switch (this.assetFilter) {
+      case "all": return this.assets;
+      case "unreferenced": return this.assets.filter((asset) => asset.status === "unreferenced");
+      case "referenced": return this.assets.filter((asset) => asset.status === "referenced");
+    }
+  }
+
+  private selectedAssets(): ImageAsset[] {
+    const byPath = new Map(this.assets.map((asset) => [asset.path, asset]));
+    return Array.from(this.assetChecked)
+      .map((path) => byPath.get(path))
+      .filter((asset): asset is ImageAsset => !!asset);
+  }
+
+  private toggleAssets(assets: ImageAsset[], force?: boolean): void {
+    if (force != null) {
+      for (const asset of assets) {
+        if (force) this.assetChecked.add(asset.path);
+        else this.assetChecked.delete(asset.path);
+      }
+      return;
+    }
+    const allChecked = assets.every((asset) => this.assetChecked.has(asset.path));
+    for (const asset of assets) {
+      if (allChecked) this.assetChecked.delete(asset.path);
+      else this.assetChecked.add(asset.path);
+    }
+  }
+
+  private pruneAssetSelection(): void {
+    const visiblePaths = new Set(this.visibleAssets().map((asset) => asset.path));
+    for (const path of Array.from(this.assetChecked)) {
+      if (!visiblePaths.has(path)) this.assetChecked.delete(path);
+    }
+  }
+
+  private async deleteSelectedAssets(): Promise<void> {
+    const selected = this.selectedAssets();
+    if (selected.length === 0) return;
+    const T = t().panel.assets;
+    const total = selected.reduce((sum, asset) => sum + asset.size, 0);
+    const ok = window.confirm(T.confirm(selected.length, fmtSize(total)));
+    if (!ok) return;
+
+    let deleted = 0;
+    const failed: string[] = [];
+    for (const asset of selected) {
+      try {
+        await this.app.vault.delete(asset.file);
+        deleted++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        failed.push(`${asset.path}: ${msg}`);
+      }
+    }
+    new Notice(T.deleteDone(deleted, failed.length), 8000);
+    if (failed.length > 0) console.warn("NotePic OSS asset deletion failures", failed);
+    this.assetChecked.clear();
+    await this.rescanAssets({ resetSelection: true });
+  }
+
+  private async openAsset(asset: ImageAsset): Promise<void> {
+    await this.app.workspace.getLeaf(false).openFile(asset.file);
+  }
 }
 
 // ---- helpers --------------------------------------------------------------
@@ -492,6 +790,61 @@ function badgeClass(it: ScannedItem, uploader: Uploader | null): string {
 function setButtonTooltip(button: HTMLElement, tooltip: string): void {
   button.setAttr("aria-label", tooltip);
   button.setAttr("title", tooltip);
+}
+
+interface AssetTreeNode {
+  name: string;
+  path: string;
+  folders: Map<string, AssetTreeNode>;
+  assets: ImageAsset[];
+}
+
+function makeNode(name: string, path: string): AssetTreeNode {
+  return { name, path, folders: new Map(), assets: [] };
+}
+
+function buildAssetTree(assets: ImageAsset[]): AssetTreeNode {
+  const root = makeNode("", "");
+  for (const asset of assets) {
+    let node = root;
+    const parts = asset.folder ? asset.folder.split("/") : [];
+    let path = "";
+    for (const part of parts) {
+      path = path ? `${path}/${part}` : part;
+      let child = node.folders.get(part);
+      if (!child) {
+        child = makeNode(part, path);
+        node.folders.set(part, child);
+      }
+      node = child;
+    }
+    node.assets.push(asset);
+  }
+  sortTree(root);
+  return root;
+}
+
+function sortTree(node: AssetTreeNode): void {
+  node.assets.sort((a, b) => a.name.localeCompare(b.name));
+  node.folders = new Map(Array.from(node.folders.entries()).sort(([a], [b]) => a.localeCompare(b)));
+  for (const child of node.folders.values()) sortTree(child);
+}
+
+function collectTreeAssets(node: AssetTreeNode): ImageAsset[] {
+  const out = [...node.assets];
+  for (const child of node.folders.values()) out.push(...collectTreeAssets(child));
+  return out;
+}
+
+function folderChain(folder: string): string[] {
+  if (!folder) return [];
+  const out: string[] = [];
+  let current = "";
+  for (const part of folder.split("/")) {
+    current = current ? `${current}/${part}` : part;
+    out.push(current);
+  }
+  return out;
 }
 
 /**

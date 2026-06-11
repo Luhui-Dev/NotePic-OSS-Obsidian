@@ -24,6 +24,7 @@ const en = {
   cmd: {
     uploadAll: "Upload all images in current note (in place)",
     openManager: "Open image manager for current note",
+    openVaultAssets: "View all local image assets",
   },
   menu: {
     uploadAll: "NotePic OSS: Upload all images (in place)",
@@ -36,6 +37,7 @@ const en = {
     connectionOk: "NotePic OSS: connection OK ✅",
     connectionFailed: (m: string) =>
       `NotePic OSS: connection failed — ${m}. If this looks like CORS, add a rule allowing PUT/HEAD/DELETE from the app:// origin.`,
+    assetScanFailed: (m: string) => `NotePic OSS: vault image scan failed — ${m}`,
   },
   validation: {
     accessKeyId: "Access Key ID is required",
@@ -104,6 +106,8 @@ const en = {
   panel: {
     title: "Image Manager",
     titleWithFile: (name: string, n: number) => `${name} · ${n} images`,
+    tabNote: "Current note",
+    tabAssets: "All assets",
     refresh: "Refresh",
     emptyNoFile: "Open a note to manage its images.",
     emptyUnsupported: "This file type isn't supported (md / mdx / markdown / html).",
@@ -131,6 +135,30 @@ const en = {
     badge_remote: "cloud",
     badge_missing: "missing",
     badge_skip: "skip",
+    assets: {
+      scanning: "Scanning vault images…",
+      empty: "No local images found in this vault.",
+      noMatch: "No images match this filter.",
+      filterAll: "All",
+      filterUnreferenced: "Unreferenced",
+      filterReferenced: "Referenced",
+      toggleVisible: "Select all",
+      summary: (n: number, size: string) => `${n} images · ${size}`,
+      folderSummary: (n: number, size: string) => `${n} · ${size}`,
+      selected: (n: number, size: string) => `${n} selected · ${size}`,
+      deleteN: (n: number) => `Delete ${n}`,
+      delete: "Delete",
+      open: "Open image",
+      expand: "Expand",
+      collapse: "Collapse",
+      refCount: (n: number) => `${n} refs`,
+      noRefs: "no refs",
+      badgeReferenced: "referenced",
+      badgeUnreferenced: "unreferenced",
+      confirm: (n: number, size: string) => `Delete ${n} local image(s) and free about ${size}?`,
+      deleteDone: (ok: number, failed: number) =>
+        `NotePic OSS: deleted ${ok} image(s)` + (failed > 0 ? `, failed ${failed}` : ""),
+    },
   },
   failure: {
     title: (n: number) => `Upload failed for ${n} image(s)`,
@@ -157,6 +185,7 @@ const zh: typeof en = {
   cmd: {
     uploadAll: "上传当前笔记中的所有图片到 OSS（覆盖式）",
     openManager: "打开当前笔记的图片管理面板",
+    openVaultAssets: "查看全部本地图片资产",
   },
   menu: {
     uploadAll: "NotePic OSS：上传全部图片（覆盖式）",
@@ -169,6 +198,7 @@ const zh: typeof en = {
     connectionOk: "NotePic OSS：连接成功 ✅",
     connectionFailed: (m: string) =>
       `NotePic OSS：连接失败 — ${m}。如果看起来像跨域问题，请到 Bucket 的 CORS 设置里允许来自 app:// 的 PUT/HEAD/DELETE。`,
+    assetScanFailed: (m: string) => `NotePic OSS：扫描 Vault 图片失败 — ${m}`,
   },
   validation: {
     accessKeyId: "Access Key ID 必填",
@@ -235,6 +265,8 @@ const zh: typeof en = {
   panel: {
     title: "图片管理面板",
     titleWithFile: (name: string, n: number) => `${name} · 共 ${n} 张`,
+    tabNote: "当前笔记",
+    tabAssets: "全部资产",
     refresh: "刷新",
     emptyNoFile: "打开一篇笔记后即可管理其图片。",
     emptyUnsupported: "当前文件类型不支持（仅 md / mdx / markdown / html）。",
@@ -262,6 +294,30 @@ const zh: typeof en = {
     badge_remote: "云端",
     badge_missing: "缺失",
     badge_skip: "跳过",
+    assets: {
+      scanning: "正在扫描 Vault 图片…",
+      empty: "当前 Vault 中没有本地图片。",
+      noMatch: "当前过滤条件下没有匹配的图片。",
+      filterAll: "全部",
+      filterUnreferenced: "未被引用",
+      filterReferenced: "已被引用",
+      toggleVisible: "全选",
+      summary: (n: number, size: string) => `${n} 张图片 · ${size}`,
+      folderSummary: (n: number, size: string) => `${n} 张 · ${size}`,
+      selected: (n: number, size: string) => `已选 ${n} 项 · ${size}`,
+      deleteN: (n: number) => `删除 ${n} 项`,
+      delete: "删除",
+      open: "打开图片",
+      expand: "展开",
+      collapse: "折叠",
+      refCount: (n: number) => `${n} 处引用`,
+      noRefs: "无引用",
+      badgeReferenced: "已引用",
+      badgeUnreferenced: "未引用",
+      confirm: (n: number, size: string) => `确认删除 ${n} 张本地图片，预计释放 ${size}？`,
+      deleteDone: (ok: number, failed: number) =>
+        `NotePic OSS：已删除 ${ok} 张图片` + (failed > 0 ? `，失败 ${failed} 张` : ""),
+    },
   },
   failure: {
     title: (n: number) => `${n} 张图片上传失败`,

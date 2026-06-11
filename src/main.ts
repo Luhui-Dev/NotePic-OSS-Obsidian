@@ -68,6 +68,14 @@ export default class NotePicOssPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "open-vault-image-assets",
+      name: T.cmd.openVaultAssets,
+      callback: () => {
+        void this.activatePanel("assets");
+      },
+    });
+
     // Editor context menu
     this.registerEvent(
       this.app.workspace.on(
@@ -107,7 +115,7 @@ export default class NotePicOssPlugin extends Plugin {
    * Open the image-management panel in the right sidebar, reusing any
    * existing leaf of this type. Safe to call from any entry point.
    */
-  async activatePanel(): Promise<void> {
+  async activatePanel(mode: "note" | "assets" = "note"): Promise<void> {
     const { workspace } = this.app;
     const existing = workspace.getLeavesOfType(VIEW_TYPE_NOTEPIC_OSS_PANEL);
     let leaf: WorkspaceLeaf | null = existing[0] ?? null;
@@ -120,6 +128,10 @@ export default class NotePicOssPlugin extends Plugin {
       await leaf.setViewState({ type: VIEW_TYPE_NOTEPIC_OSS_PANEL, active: true });
     }
     workspace.setActiveLeaf(leaf);
+    const view = leaf.view;
+    if (view instanceof ImagePanelView && mode === "assets") {
+      void view.showVaultAssets();
+    }
   }
 
   /**

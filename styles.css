@@ -238,6 +238,30 @@
   gap: 0.25rem;
 }
 
+.mdoss-panel-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.15rem;
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.mdoss-panel-tab {
+  flex: 1;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.mdoss-panel-tab.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
 .mdoss-panel-icon-btn {
   background: transparent;
   border: none;
@@ -327,4 +351,50 @@
   font-size: var(--font-ui-smaller);
   color: var(--text-muted);
   margin-right: auto;
+}
+
+.mdoss-assets-summary {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.mdoss-assets-list {
+  gap: 0.25rem;
+}
+
+.mdoss-asset-folder,
+.mdoss-asset-row {
+  margin-left: calc(var(--mdoss-depth, 0) * 0.75rem);
+}
+
+.mdoss-asset-folder {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 6px;
+  background: var(--background-primary-alt);
+}
+
+.mdoss-asset-folder-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.mdoss-asset-folder-meta {
+  justify-content: flex-end;
+}
+
+.mdoss-openable-thumb,
+.mdoss-openable-text {
+  cursor: pointer;
+}
+
+.mdoss-openable-text:hover {
+  color: var(--text-accent);
+  text-decoration: underline;
 }
