@@ -28,6 +28,17 @@ function safeDecode(s: string): string {
   try { return decodeURIComponent(s); } catch { return s; }
 }
 
+function normalizeVaultPath(path: string): string {
+  const normalized = normalizePath(path);
+  const out: string[] = [];
+  for (const part of normalized.split("/")) {
+    if (!part || part === ".") continue;
+    if (part === "..") out.pop();
+    else out.push(part);
+  }
+  return out.join("/");
+}
+
 export class Resolver {
   constructor(private readonly app: App, private readonly sourcePath: string) {}
 
@@ -74,8 +85,8 @@ export class Resolver {
       ? this.sourcePath.slice(0, this.sourcePath.lastIndexOf("/"))
       : "";
     const candidates: string[] = [];
-    if (noteDir) candidates.push(normalizePath(`${noteDir}/${p}`));
-    candidates.push(normalizePath(p));
+    if (noteDir) candidates.push(normalizeVaultPath(`${noteDir}/${p}`));
+    candidates.push(normalizeVaultPath(p));
 
     for (const c of candidates) {
       const f = this.app.vault.getAbstractFileByPath(c);

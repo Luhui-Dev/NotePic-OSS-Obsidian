@@ -8,16 +8,20 @@ export class TFile {
   extension = "";
   basename = "";
   name = "";
+  stat = { size: 0 };
 }
 export class TFolder {}
 export class TAbstractFile {}
 
 export class App {
   vault = {
+    getFiles: () => [] as TFile[],
     getAbstractFileByPath: (_p: string) => null as unknown,
     adapter: { stat: async () => null },
     read: async (_f: TFile) => "",
+    cachedRead: async (_f: TFile) => "",
     readBinary: async (_f: TFile) => new ArrayBuffer(0),
+    delete: async (_f: TFile) => undefined,
     process: async (_f: TFile, _fn: (s: string) => string) => undefined,
     getResourcePath: (_f: TFile) => "",
   };
