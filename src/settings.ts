@@ -1,6 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type NotePicOssPlugin from "./main";
 import { Uploader } from "./core/uploader";
+import { PROTOCOL_VERSION } from "./protocol";
 import { t } from "./i18n";
 
 export interface NotePicOssSettings {
@@ -253,5 +254,10 @@ export class NotePicOssSettingTab extends PluginSettingTab {
     cors.appendText(S.safety_cors_headers);
     cors.createEl("code", { text: "*" });
     cors.appendText(S.safety_cors_suffix);
+
+    containerEl.createEl("div", {
+      cls: "setting-item-description",
+      text: `Protocol: ${PROTOCOL_VERSION}`,
+    });
   }
 }

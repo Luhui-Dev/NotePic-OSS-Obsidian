@@ -27,12 +27,14 @@ import { rewriteRef } from "./core/rewriter";
 import { ProgressNotice } from "./ui/ProgressNotice";
 import { FailureModal } from "./ui/FailureModal";
 import { ImagePanelView, VIEW_TYPE_NOTEPIC_OSS_PANEL } from "./ui/ImagePanelView";
+import { PROTOCOL_VERSION } from "./protocol";
 import { t } from "./i18n";
 
 export default class NotePicOssPlugin extends Plugin {
   settings!: NotePicOssSettings;
 
   async onload(): Promise<void> {
+    console.debug(`notepic-oss: protocol ${PROTOCOL_VERSION}`);
     await this.loadSettings();
 
     this.addSettingTab(new NotePicOssSettingTab(this.app, this));
