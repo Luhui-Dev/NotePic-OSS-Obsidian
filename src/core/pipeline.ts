@@ -92,7 +92,7 @@ async function fetchRemoteBytes(url: string, signal?: AbortSignal): Promise<{ by
   if (signal?.aborted) throw new Error("Request cancelled");
   if (resp.status < 200 || resp.status >= 300) throw new Error(`HTTP ${resp.status}`);
   const ab = resp.arrayBuffer;
-  // Try Content-Type first, fall back to URL ext — see PROTOCOL.md §4.2.
+  // Try Content-Type first, fall back to URL ext — see PROTOCOL.md §4.3.
   const ct = resp.headers["Content-Type"] ?? resp.headers["content-type"] ?? "";
   const ext = extFromContentType(ct) || extractExt(new URL(url).pathname) || ".jpg";
   return { bytes: new Uint8Array(ab), ext };

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Blocks a release if this repo's PROTOCOL_VERSION doesn't match the
 # PROTOCOL_VERSION shipped in NotePic-OSS-CLI's latest GitHub Release.
-# See PROTOCOL.md §1 and §7 for what this is enforcing and why.
+# See PROTOCOL.md §1 and §6 for what this is enforcing and why.
 set -euo pipefail
 
 OTHER_REPO="Luhui-Dev/NotePic-OSS-CLI"
