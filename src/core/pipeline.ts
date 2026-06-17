@@ -66,20 +66,35 @@ async function readBytes(app: App, target: TFile): Promise<Uint8Array> {
   return new Uint8Array(buf);
 }
 
+// Reverse of the §3.4 Content-Type table, used to sniff the extension of a
+// remote image from its response headers. Must stay in sync with the CLI's
+// _CONTENT_TYPE_EXT table in notepic_oss/processor.py.
+const CONTENT_TYPE_EXT: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+  "image/svg+xml": ".svg",
+  "image/avif": ".avif",
+  "image/bmp": ".bmp",
+  "image/tiff": ".tif",
+  "image/x-icon": ".ico",
+};
+
+function extFromContentType(contentType: string): string | null {
+  const base = contentType.split(";")[0].trim().toLowerCase();
+  return CONTENT_TYPE_EXT[base] ?? null;
+}
+
 async function fetchRemoteBytes(url: string, signal?: AbortSignal): Promise<{ bytes: Uint8Array; ext: string }> {
   if (signal?.aborted) throw new Error("Request cancelled");
   const resp = await requestUrl(url);
   if (signal?.aborted) throw new Error("Request cancelled");
   if (resp.status < 200 || resp.status >= 300) throw new Error(`HTTP ${resp.status}`);
   const ab = resp.arrayBuffer;
-  // Try Content-Type first, fall back to URL ext.
+  // Try Content-Type first, fall back to URL ext — see PROTOCOL.md §4.2.
   const ct = resp.headers["Content-Type"] ?? resp.headers["content-type"] ?? "";
-  let ext = "";
-  if (ct.includes("png")) ext = ".png";
-  else if (ct.includes("jpeg") || ct.includes("jpg")) ext = ".jpg";
-  else if (ct.includes("webp")) ext = ".webp";
-  else if (ct.includes("gif")) ext = ".gif";
-  if (!ext) ext = extractExt(new URL(url).pathname) || ".jpg";
+  const ext = extFromContentType(ct) || extractExt(new URL(url).pathname) || ".jpg";
   return { bytes: new Uint8Array(ab), ext };
 }
 
