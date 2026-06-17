@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "[0-9]*.[0-9]*.[0-9]*"
+  workflow_dispatch:
+    inputs:
+      skip_protocol_check:
+        description: "Skip the cross-repo PROTOCOL_VERSION check (only for a coordinated protocol bump where this repo must ship first)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -30,6 +36,12 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Verify PROTOCOL_VERSION matches NotePic-OSS-CLI's latest release
+        if: ${{ github.event_name != 'workflow_dispatch' || !inputs.skip_protocol_check }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/check-protocol-version.sh
 
       - name: Verify manifest version matches tag
         id: ver
