@@ -1,6 +1,10 @@
 // High-quality image compression that mirrors notepic_oss/compressor.py:
 //   - JPEG / WebP via Canvas (re-encode at the configured quality)
-//   - PNG via UPNG.js (quantize + deflate; closest to pngquant)
+//   - PNG: quality 100 -> lossless deflate re-encode; quality < 100 -> UPNG.js
+//     quantization to a 256-color palette (alpha preserved). See PROTOCOL.md
+//     §4.1 — the 100-vs-<100 lossless/quantized split must match the CLI's
+//     Image.quantize(..., method=FASTOCTREE) behavior exactly, even though the
+//     two quantizers don't need to produce identical bytes.
 //   - GIF / SVG / BMP / ICO / TIFF / animated images passthrough
 //
 // All work happens in the Electron renderer using the DOM Image / OffscreenCanvas
