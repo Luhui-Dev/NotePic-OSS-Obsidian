@@ -5,6 +5,10 @@
 //     §4.1 — the 100-vs-<100 lossless/quantized split must match the CLI's
 //     Image.quantize(..., method=FASTOCTREE) behavior exactly, even though the
 //     two quantizers don't need to produce identical bytes.
+//   - Unknown-but-decodable formats: fall back to PNG (via the same path as
+//     above) when the decoded pixels actually carry transparency, otherwise
+//     flatten to JPEG. This mirrors the CLI checking PIL's image mode
+//     (RGBA/LA/P implies alpha) — see PROTOCOL.md §4.1.
 //   - GIF / SVG / BMP / ICO / TIFF / animated images passthrough
 //
 // All work happens in the Electron renderer using the DOM Image / OffscreenCanvas
@@ -80,29 +84,41 @@ async function encodeViaCanvas(
   return new Uint8Array(await blob.arrayBuffer());
 }
 
-async function encodePngViaUpng(bitmap: ImageBitmap): Promise<Uint8Array | null> {
-  // Get raw RGBA via a canvas.
-  let imageData: ImageData;
+function getImageData(bitmap: ImageBitmap): ImageData | null {
+  let canvas: OffscreenCanvas | HTMLCanvasElement;
   if (typeof OffscreenCanvas !== "undefined") {
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(bitmap, 0, 0);
-    imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+    canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   } else {
-    const canvas = activeDocument.createElement("canvas");
+    canvas = activeDocument.createElement("canvas");
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(bitmap, 0, 0);
-    imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
   }
-  // UPNG.encode([rgba], w, h, cnum) — cnum=256 → quantized palette PNG ≈ pngquant.
-  // cnum=0 → lossless PNG with deflate. Try quantized first; if no quality loss
-  // is preferable, callers can set quality=100 to disable (see compressImage).
+  const ctx = canvas.getContext("2d") as
+    | OffscreenCanvasRenderingContext2D
+    | CanvasRenderingContext2D
+    | null;
+  if (!ctx) return null;
+  ctx.drawImage(bitmap, 0, 0);
+  return ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+}
+
+/** True if any decoded pixel has alpha < 255 — mirrors PIL mode RGBA/LA/P detection. */
+function hasTransparency(imageData: ImageData): boolean {
+  const data = imageData.data;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] !== 255) return true;
+  }
+  return false;
+}
+
+/**
+ * Encode raw pixels as PNG: quality 100 -> lossless (UPNG cnum=0), otherwise
+ * quantized to a 256-color palette (UPNG cnum=256) — see PROTOCOL.md §4.1.
+ */
+function encodePngFromImageData(imageData: ImageData, quality: number): Uint8Array | null {
+  const cnum = quality >= 100 ? 0 : 256;
   try {
-    const ab: ArrayBuffer = UPNG.encode([imageData.data.buffer], imageData.width, imageData.height, 256);
+    const ab: ArrayBuffer = UPNG.encode([imageData.data.buffer], imageData.width, imageData.height, cnum);
     return new Uint8Array(ab);
   } catch {
     return null;
@@ -133,14 +149,21 @@ export async function compressImage(
       return { bytes, ext: ".webp" };
     }
     if (ext === ".png") {
-      // If user dialled quality up to 100, treat as "no PNG quantization" and
-      // just trust the original bytes — encoding via UPNG at cnum=256 is lossy.
-      if (quality >= 100) return { bytes, ext: ".png" };
-      const enc = await encodePngViaUpng(bitmap);
+      const imageData = getImageData(bitmap);
+      if (!imageData) return { bytes, ext: ".png" };
+      const enc = encodePngFromImageData(imageData, quality);
       if (enc && enc.length < bytes.length) return { bytes: enc, ext: ".png" };
       return { bytes, ext: ".png" };
     }
-    // Unknown but decodable: try JPEG flatten as a sensible default for photos.
+    // Unknown but decodable: images with transparency fall back to PNG
+    // (lossless/quantized per `quality`, same as the .png branch above);
+    // everything else flattens to JPEG. Mirrors the CLI's PIL-mode check.
+    const imageData = getImageData(bitmap);
+    if (imageData && hasTransparency(imageData)) {
+      const enc = encodePngFromImageData(imageData, quality);
+      if (enc && enc.length < bytes.length) return { bytes: enc, ext: ".png" };
+      return { bytes, ext: ".png" };
+    }
     const enc = await encodeViaCanvas(bitmap, "image/jpeg", quality, true);
     if (enc && enc.length < bytes.length) return { bytes: enc, ext: ".jpg" };
     return { bytes, ext };
