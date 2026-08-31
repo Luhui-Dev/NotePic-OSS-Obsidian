@@ -61,4 +61,40 @@ describe("scanVaultImageAssets", () => {
     expect(assets.find((a) => a.path === "notes/md.jpg")?.references[0].rawUrl).toBe("md.jpg");
     expect(assets.find((a) => a.path === "assets/html.webp")?.references).toHaveLength(2);
   });
+
+  it("counts image file nodes in Canvas files as references", async () => {
+    const files = [
+      file("boards/project.canvas"),
+      file("assets/diagram.png"),
+      file("assets/unused.png"),
+    ];
+    const app = appWith(files, {
+      "boards/project.canvas": JSON.stringify({
+        nodes: [
+          { type: "file", file: "assets/diagram.png" },
+          { type: "file", file: "notes/not-an-image.md" },
+        ],
+      }),
+    });
+
+    const assets = await scanVaultImageAssets(app);
+    const diagram = assets.find((asset) => asset.path === "assets/diagram.png");
+
+    expect(diagram?.status).toBe("referenced");
+    expect(diagram?.references).toContainEqual({
+      sourcePath: "boards/project.canvas",
+      rawUrl: "assets/diagram.png",
+      kind: "canvas-file",
+    });
+    expect(assets.find((asset) => asset.path === "assets/unused.png")?.status).toBe("unreferenced");
+  });
+
+  it("skips malformed Canvas JSON without stopping the asset scan", async () => {
+    const files = [file("boards/broken.canvas"), file("assets/diagram.png")];
+    const app = appWith(files, { "boards/broken.canvas": "{not valid json" });
+
+    await expect(scanVaultImageAssets(app)).resolves.toEqual([
+      expect.objectContaining({ path: "assets/diagram.png", status: "unreferenced" }),
+    ]);
+  });
 });
