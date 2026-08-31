@@ -11,6 +11,8 @@ import { Uploader } from "../core/uploader";
 import { buildUploaderConfig } from "../settings";
 import { collectSizes, fmtSize } from "../util/sizes";
 import { t } from "../i18n";
+import { downloadSelected, pickDownloadFolder } from "../core/downloader";
+import { DownloadFailureModal } from "./DownloadFailureModal";
 
 export const VIEW_TYPE_NOTEPIC_OSS_PANEL = "notepic-oss-panel";
 
@@ -49,6 +51,7 @@ export class ImagePanelView extends ItemView {
   // errors don't matter here — incomplete creds just make isOwnUrl return false
   // for everything, which is fine for display purposes.
   private displayUploader: Uploader | null = null;
+  private downloadProgress: { done: number; total: number } | null = null;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: NotePicOssPlugin) {
     super(leaf);
@@ -393,19 +396,24 @@ export class ImagePanelView extends ItemView {
     const go = footer.createEl("button", { text: "" });
     go.addClass("mod-cta");
     go.onclick = () => void this.uploadSelectedItems();
-    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement })._counter = counter;
-    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement })._go = go;
+    const download = footer.createEl("button", { text: "" });
+    download.onclick = () => void this.downloadSelectedItems();
+    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement; _download: HTMLButtonElement })._counter = counter;
+    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement; _download: HTMLButtonElement })._go = go;
+    (this as unknown as { _download: HTMLButtonElement })._download = download;
     this.updateFooter();
   }
 
   private updateFooter(): void {
-    const ref = this as unknown as { _counter?: HTMLElement; _go?: HTMLButtonElement };
-    if (!ref._counter || !ref._go) return;
+    const ref = this as unknown as { _counter?: HTMLElement; _go?: HTMLButtonElement; _download?: HTMLButtonElement };
+    if (!ref._counter || !ref._go || !ref._download) return;
     const T = t().panel;
     const n = this.checked.size;
-    ref._counter.setText(T.selected(n));
+    ref._counter.setText(this.downloadProgress ? T.downloading(this.downloadProgress.done, this.downloadProgress.total) : T.selected(n));
     ref._go.setText(n > 0 ? T.uploadN(n) : T.upload);
     ref._go.disabled = n === 0;
+    ref._download.setText(n > 0 ? T.downloadN(n) : T.download);
+    ref._download.disabled = n === 0 || this.downloadProgress !== null;
   }
 
   // ---- actions ------------------------------------------------------------
@@ -439,6 +447,37 @@ export class ImagePanelView extends ItemView {
     } finally {
       for (const k of keys) this.busyItems.delete(k);
       await this.rescan({ resetSelection: false });
+    }
+  }
+
+  private async downloadSelectedItems(): Promise<void> {
+    const selected = this.items.filter((item) => this.checked.has(itemKey(item)) && this.canSelect(item));
+    if (selected.length === 0 || this.downloadProgress) return;
+    let folder: string | null;
+    try {
+      folder = await pickDownloadFolder();
+    } catch (error) {
+      new Notice(t().panel.downloadFolderError(error instanceof Error ? error.message : String(error)), 8000);
+      return;
+    }
+    if (!folder) return;
+    const keys = selected.map(itemKey);
+    for (const key of keys) this.busyItems.add(key);
+    this.downloadProgress = { done: 0, total: selected.length };
+    this.render();
+    try {
+      const results = await downloadSelected(this.app, selected, folder, (done, total) => {
+        this.downloadProgress = { done, total };
+        this.updateFooter();
+      });
+      const failures = results.filter((result) => result.status === "failed");
+      const downloaded = results.length - failures.length;
+      new Notice(t().panel.downloadDone(downloaded, failures.length), 8000);
+      if (failures.length > 0) new DownloadFailureModal(this.app, failures).open();
+    } finally {
+      this.downloadProgress = null;
+      for (const key of keys) this.busyItems.delete(key);
+      this.render();
     }
   }
 
