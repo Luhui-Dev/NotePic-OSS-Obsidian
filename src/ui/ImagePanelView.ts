@@ -5,7 +5,7 @@
 
 import { ItemView, MarkdownView, Notice, TFile, WorkspaceLeaf, setIcon } from "obsidian";
 import type NotePicOssPlugin from "../main";
-import { scanNote, type ScannedItem } from "../core/pipeline";
+import { scanNote, type PipelineResult, type ScannedItem } from "../core/pipeline";
 import { scanVaultImageAssets, type ImageAsset } from "../core/assetScanner";
 import { Uploader } from "../core/uploader";
 import { buildUploaderConfig } from "../settings";
@@ -382,6 +382,14 @@ export class ImagePanelView extends ItemView {
   private renderFooter(parent: HTMLElement): void {
     const footer = parent.createDiv({ cls: "mdoss-footer mdoss-panel-footer" });
     const counter = footer.createSpan({ cls: "mdoss-panel-counter", text: "" });
+    const deleteLocalLabel = footer.createEl("label", { cls: "mdoss-panel-delete-local" });
+    const deleteLocal = deleteLocalLabel.createEl("input", { type: "checkbox" });
+    deleteLocal.checked = this.plugin.settings.panelDeleteLocalAfterUpload;
+    deleteLocal.onchange = () => {
+      this.plugin.settings.panelDeleteLocalAfterUpload = deleteLocal.checked;
+      void this.plugin.saveSettings();
+    };
+    deleteLocalLabel.appendText(t().panel.deleteLocalAfterUpload);
     const go = footer.createEl("button", { text: "" });
     go.addClass("mod-cta");
     go.onclick = () => void this.uploadSelectedItems();
@@ -424,11 +432,57 @@ export class ImagePanelView extends ItemView {
     for (const k of keys) this.busyItems.add(k);
     this.render();
     try {
-      await this.plugin.runUpload(this.currentFile, selected);
+      const result = await this.plugin.runUpload(this.currentFile, selected);
+      if (result && this.plugin.settings.panelDeleteLocalAfterUpload) {
+        await this.deleteUploadedLocalFiles(selected, result);
+      }
     } finally {
       for (const k of keys) this.busyItems.delete(k);
       await this.rescan({ resetSelection: false });
     }
+  }
+
+  /**
+   * Delete only local files whose selected references all completed their
+   * upload. This is deliberately called only by the panel's batch-upload
+   * action; row uploads, commands and context-menu uploads remain unchanged.
+   */
+  private async deleteUploadedLocalFiles(
+    selected: ScannedItem[],
+    result: PipelineResult,
+  ): Promise<void> {
+    const uploadedRefs = new Set(
+      result.results
+        .filter((item) => item.status === "uploaded")
+        .map((item) => item.ref),
+    );
+    const selectedKeys = new Set(selected.map(itemKey));
+    const files = new Map<string, TFile>();
+    for (const item of selected) {
+      if (item.resolved.status !== "local") continue;
+      const file = item.resolved.file;
+      const sameFileRefs = this.items.filter(
+        (candidate) => candidate.resolved.status === "local"
+          && candidate.resolved.file.path === file.path,
+      );
+      const everyReferenceWasSelectedAndUploaded = sameFileRefs.every(
+        (candidate) => selectedKeys.has(itemKey(candidate)) && uploadedRefs.has(candidate.ref),
+      );
+      if (everyReferenceWasSelectedAndUploaded) {
+        files.set(file.path, file);
+      }
+    }
+
+    let failed = 0;
+    for (const file of files.values()) {
+      try {
+        await this.app.vault.delete(file);
+      } catch (e) {
+        failed++;
+        console.warn(`NotePic OSS: failed to delete local file ${file.path}`, e);
+      }
+    }
+    if (failed > 0) new Notice(t().panel.deleteLocalFailed(failed), 8000);
   }
 
   // ---- filtering ----------------------------------------------------------

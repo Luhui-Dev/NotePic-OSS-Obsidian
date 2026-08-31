@@ -124,6 +124,9 @@ const en = {
     toggleVisible: "Select all",
     noMatch: "No images match this filter.",
     selected: (n: number) => `${n} selected`,
+    deleteLocalAfterUpload: "Also delete local files",
+    deleteLocalFailed: (n: number) =>
+      `NotePic OSS: uploaded, but failed to delete ${n} local file(s)`,
     uploadN: (n: number) => `Upload ${n}`,
     upload: "Upload",
     kind_wikilink: "![[wikilink]]",
@@ -283,6 +286,9 @@ const zh: typeof en = {
     toggleVisible: "全选",
     noMatch: "当前过滤条件下没有匹配的图片。",
     selected: (n: number) => `已选 ${n} 项`,
+    deleteLocalAfterUpload: "同时删除本地文件",
+    deleteLocalFailed: (n: number) =>
+      `NotePic OSS：上传成功，但有 ${n} 个本地文件删除失败`,
     uploadN: (n: number) => `上传 ${n} 项`,
     upload: "上传",
     kind_wikilink: "![[wiki 链接]]",

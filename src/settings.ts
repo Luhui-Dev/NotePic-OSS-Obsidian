@@ -16,6 +16,8 @@ export interface NotePicOssSettings {
   quality: number;
   processRemote: boolean;
   concurrency: number;
+  /** Preference used exclusively by the right-side panel's batch upload. */
+  panelDeleteLocalAfterUpload: boolean;
 }
 
 export const DEFAULT_SETTINGS: NotePicOssSettings = {
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: NotePicOssSettings = {
   quality: 85,
   processRemote: false,
   concurrency: 3,
+  panelDeleteLocalAfterUpload: false,
 };
 
 export function buildUploaderConfig(s: NotePicOssSettings) {

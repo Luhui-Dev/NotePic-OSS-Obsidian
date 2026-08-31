@@ -353,6 +353,16 @@
   margin-right: auto;
 }
 
+.mdoss-panel-delete-local {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .mdoss-assets-summary {
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
