@@ -408,3 +408,40 @@
   color: var(--text-accent);
   text-decoration: underline;
 }
+
+.mdoss-asset-references {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.mdoss-asset-reference,
+.mdoss-asset-reference-toggle {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  text-align: left;
+}
+
+.mdoss-asset-reference {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mdoss-asset-reference:hover,
+.mdoss-asset-reference-toggle:hover {
+  color: var(--text-accent);
+  text-decoration: underline;
+}
+
+.mdoss-asset-reference-toggle {
+  color: var(--text-accent);
+}

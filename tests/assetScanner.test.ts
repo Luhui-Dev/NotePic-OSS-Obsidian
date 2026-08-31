@@ -59,6 +59,9 @@ describe("scanVaultImageAssets", () => {
     expect(assets.find((a) => a.path === "assets/unused.avif")?.status).toBe("unreferenced");
     expect(assets.find((a) => a.path === "assets/wiki.png")?.references).toHaveLength(1);
     expect(assets.find((a) => a.path === "notes/md.jpg")?.references[0].rawUrl).toBe("md.jpg");
-    expect(assets.find((a) => a.path === "assets/html.webp")?.references).toHaveLength(2);
+    expect(assets.find((a) => a.path === "assets/html.webp")?.references).toEqual([
+      { sourcePath: "notes/b.md", rawUrl: "../assets/html.webp", kind: "html" },
+      { sourcePath: "notes/c.html", rawUrl: "../assets/html.webp", kind: "html" },
+    ]);
   });
 });
