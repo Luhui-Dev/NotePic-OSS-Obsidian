@@ -39,6 +39,7 @@ export class ImagePanelView extends ItemView {
   private assets: ImageAsset[] = [];
   private assetChecked = new Set<string>();
   private expandedFolders = new Set<string>();
+  private expandedAssetReferences = new Set<string>();
   private assetsBusy = false;
   private scanToken = 0;
   // Signature of the last rendered item list — when an incoming rescan has
@@ -664,6 +665,36 @@ export class ImagePanelView extends ItemView {
         : t().panel.assets.noRefs,
     });
 
+    const referenceSources = uniqueReferenceSources(asset);
+    if (referenceSources.length > 0) {
+      const sourcesEl = meta.createDiv({ cls: "mdoss-asset-references" });
+      const expanded = this.expandedAssetReferences.has(asset.path);
+      const visibleSources = expanded ? referenceSources : referenceSources.slice(0, 1);
+
+      for (const sourcePath of visibleSources) {
+        const source = sourcesEl.createEl("button", {
+          cls: "mdoss-asset-reference",
+          text: sourcePath,
+        });
+        source.setAttr("title", t().panel.assets.openReference);
+        source.onclick = () => void this.openReference(sourcePath);
+      }
+
+      if (referenceSources.length > 1) {
+        const toggle = sourcesEl.createEl("button", {
+          cls: "mdoss-asset-reference-toggle",
+          text: expanded
+            ? t().panel.assets.hideReferences
+            : t().panel.assets.showMoreReferences(referenceSources.length - 1),
+        });
+        toggle.onclick = () => {
+          if (expanded) this.expandedAssetReferences.delete(asset.path);
+          else this.expandedAssetReferences.add(asset.path);
+          this.render();
+        };
+      }
+    }
+
     row.createSpan({
       cls: `mdoss-badge ${asset.status === "referenced" ? "is-local" : "is-missing"}`,
       text: asset.status === "referenced" ? t().panel.assets.badgeReferenced : t().panel.assets.badgeUnreferenced,
@@ -756,6 +787,11 @@ export class ImagePanelView extends ItemView {
 
   private async openAsset(asset: ImageAsset): Promise<void> {
     await this.app.workspace.getLeaf(false).openFile(asset.file);
+  }
+
+  private async openReference(sourcePath: string): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (file instanceof TFile) await this.app.workspace.getLeaf(false).openFile(file);
   }
 }
 
@@ -851,6 +887,11 @@ interface AssetTreeNode {
   path: string;
   folders: Map<string, AssetTreeNode>;
   assets: ImageAsset[];
+}
+
+/** A note may embed an image more than once; show each source file only once. */
+function uniqueReferenceSources(asset: ImageAsset): string[] {
+  return Array.from(new Set(asset.references.map((reference) => reference.sourcePath)));
 }
 
 function makeNode(name: string, path: string): AssetTreeNode {
