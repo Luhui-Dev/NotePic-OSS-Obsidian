@@ -124,7 +124,7 @@ export default class NotePicOssPlugin extends Plugin {
     if (!leaf) {
       leaf = workspace.getRightLeaf(false) ?? workspace.getRightLeaf(true);
       if (!leaf) {
-        new Notice("NotePic OSS: could not allocate a right-sidebar leaf");
+        new Notice(t().notice.sidebarUnavailable);
         return;
       }
       await leaf.setViewState({ type: VIEW_TYPE_NOTEPIC_OSS_PANEL, active: true });

@@ -223,7 +223,7 @@ export class NotePicOssSettingTab extends PluginSettingTab {
         b.setButtonText(S.test_button).onClick(async () => {
           const err = validateConfig(this.plugin.settings);
           if (err) {
-            new Notice(`NotePic OSS: ${err}`);
+            new Notice(N.validationFailed(err));
             return;
           }
           b.setDisabled(true).setButtonText(S.test_running);
@@ -260,7 +260,7 @@ export class NotePicOssSettingTab extends PluginSettingTab {
 
     containerEl.createEl("div", {
       cls: "setting-item-description",
-      text: `Protocol: ${PROTOCOL_VERSION}`,
+      text: S.protocolVersion(PROTOCOL_VERSION),
     });
   }
 }

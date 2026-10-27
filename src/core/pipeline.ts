@@ -87,10 +87,10 @@ function extFromContentType(contentType: string): string | null {
 }
 
 async function fetchRemoteBytes(url: string, signal?: AbortSignal): Promise<{ bytes: Uint8Array; ext: string }> {
-  if (signal?.aborted) throw new Error("Request cancelled");
-  const resp = await requestUrl(url);
-  if (signal?.aborted) throw new Error("Request cancelled");
-  if (resp.status < 200 || resp.status >= 300) throw new Error(`HTTP ${resp.status}`);
+  if (signal?.aborted) throw new Error(t().reason.cancelled);
+  const resp = await requestUrl({ url, throw: false });
+  if (signal?.aborted) throw new Error(t().reason.cancelled);
+  if (resp.status < 200 || resp.status >= 300) throw new Error(t().reason.httpError(resp.status));
   const ab = resp.arrayBuffer;
   // Try Content-Type first, fall back to URL ext — see PROTOCOL.md §4.3.
   const ct = resp.headers["Content-Type"] ?? resp.headers["content-type"] ?? "";

@@ -11,6 +11,8 @@ import { Uploader } from "../core/uploader";
 import { buildUploaderConfig } from "../settings";
 import { collectSizes, fmtSize } from "../util/sizes";
 import { t } from "../i18n";
+import { downloadSelected, pickDownloadFolder } from "../core/downloader";
+import { DownloadFailureModal } from "./DownloadFailureModal";
 
 export const VIEW_TYPE_NOTEPIC_OSS_PANEL = "notepic-oss-panel";
 
@@ -50,6 +52,14 @@ export class ImagePanelView extends ItemView {
   // errors don't matter here — incomplete creds just make isOwnUrl return false
   // for everything, which is fine for display purposes.
   private displayUploader: Uploader | null = null;
+  private downloadProgress: { done: number; total: number } | null = null;
+  private noteFooter: {
+    counter: HTMLElement;
+    upload: HTMLButtonElement;
+    uploadLabel: HTMLElement;
+    download: HTMLButtonElement;
+    downloadLabel: HTMLElement;
+  } | null = null;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: NotePicOssPlugin) {
     super(leaf);
@@ -199,6 +209,7 @@ export class ImagePanelView extends ItemView {
   private render(): void {
     const { contentEl } = this;
     contentEl.empty();
+    this.noteFooter = null;
     contentEl.addClass("mdoss-panel");
 
     this.renderHeader(contentEl);
@@ -381,7 +392,7 @@ export class ImagePanelView extends ItemView {
   }
 
   private renderFooter(parent: HTMLElement): void {
-    const footer = parent.createDiv({ cls: "mdoss-footer mdoss-panel-footer" });
+    const footer = parent.createDiv({ cls: "mdoss-footer mdoss-panel-footer mdoss-panel-note-footer" });
     const counter = footer.createSpan({ cls: "mdoss-panel-counter", text: "" });
     const deleteLocalLabel = footer.createEl("label", { cls: "mdoss-panel-delete-local" });
     const deleteLocal = deleteLocalLabel.createEl("input", { type: "checkbox" });
@@ -390,23 +401,40 @@ export class ImagePanelView extends ItemView {
       this.plugin.settings.panelDeleteLocalAfterUpload = deleteLocal.checked;
       void this.plugin.saveSettings();
     };
-    deleteLocalLabel.appendText(t().panel.deleteLocalAfterUpload);
-    const go = footer.createEl("button", { text: "" });
-    go.addClass("mod-cta");
+    deleteLocalLabel.createSpan({ text: t().panel.deleteLocalAfterUpload });
+    const go = footer.createEl("button", { cls: "mod-cta mdoss-panel-batch-action" });
+    const uploadIcon = go.createSpan({ cls: "mdoss-panel-action-icon" });
+    uploadIcon.setAttr("aria-hidden", "true");
+    setIcon(uploadIcon, "upload");
+    const uploadLabel = go.createSpan({ cls: "mdoss-panel-action-label" });
     go.onclick = () => void this.uploadSelectedItems();
-    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement })._counter = counter;
-    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement })._go = go;
+    const download = footer.createEl("button", { cls: "mdoss-panel-batch-action" });
+    const downloadIcon = download.createSpan({ cls: "mdoss-panel-action-icon" });
+    downloadIcon.setAttr("aria-hidden", "true");
+    setIcon(downloadIcon, "download");
+    const downloadLabel = download.createSpan({ cls: "mdoss-panel-action-label" });
+    download.onclick = () => void this.downloadSelectedItems();
+    this.noteFooter = { counter, upload: go, uploadLabel, download, downloadLabel };
     this.updateFooter();
   }
 
   private updateFooter(): void {
-    const ref = this as unknown as { _counter?: HTMLElement; _go?: HTMLButtonElement };
-    if (!ref._counter || !ref._go) return;
+    const footer = this.noteFooter;
+    if (!footer) return;
     const T = t().panel;
     const n = this.checked.size;
-    ref._counter.setText(T.selected(n));
-    ref._go.setText(n > 0 ? T.uploadN(n) : T.upload);
-    ref._go.disabled = n === 0;
+    const progress = this.downloadProgress;
+    const counterText = progress ? T.downloading(progress.done, progress.total) : T.selected(n);
+    footer.counter.setText(counterText);
+    footer.counter.setAttr("title", counterText);
+    const uploadText = n > 0 ? T.uploadN(n) : T.upload;
+    const downloadText = progress ? T.downloading(progress.done, progress.total) : n > 0 ? T.downloadN(n) : T.download;
+    footer.uploadLabel.setText(uploadText);
+    footer.downloadLabel.setText(downloadText);
+    setButtonTooltip(footer.upload, uploadText);
+    setButtonTooltip(footer.download, downloadText);
+    footer.upload.disabled = n === 0;
+    footer.download.disabled = n === 0 || progress !== null;
   }
 
   // ---- actions ------------------------------------------------------------
@@ -440,6 +468,39 @@ export class ImagePanelView extends ItemView {
     } finally {
       for (const k of keys) this.busyItems.delete(k);
       await this.rescan({ resetSelection: false });
+    }
+  }
+
+  private async downloadSelectedItems(): Promise<void> {
+    const selected = this.items.filter((item) => this.checked.has(itemKey(item)) && this.canSelect(item));
+    if (selected.length === 0 || this.downloadProgress) return;
+    let folder: string | null;
+    try {
+      folder = await pickDownloadFolder();
+    } catch (error) {
+      new Notice(t().panel.downloadFolderError(error instanceof Error ? error.message : String(error)), 8000);
+      return;
+    }
+    if (!folder) return;
+    const keys = selected.map(itemKey);
+    for (const key of keys) this.busyItems.add(key);
+    this.downloadProgress = { done: 0, total: selected.length };
+    this.render();
+    try {
+      const results = await downloadSelected(this.app, selected, folder, (done, total) => {
+        this.downloadProgress = { done, total };
+        this.updateFooter();
+      });
+      const failures = results.filter((result) => result.status === "failed");
+      const downloaded = results.length - failures.length;
+      new Notice(t().panel.downloadDone(downloaded, failures.length), 8000);
+      if (failures.length > 0) new DownloadFailureModal(this.app, failures).open();
+    } catch (error) {
+      new Notice(t().panel.downloadError(error instanceof Error ? error.message : String(error)), 8000);
+    } finally {
+      this.downloadProgress = null;
+      for (const key of keys) this.busyItems.delete(key);
+      this.render();
     }
   }
 
