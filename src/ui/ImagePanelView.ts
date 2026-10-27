@@ -41,6 +41,7 @@ export class ImagePanelView extends ItemView {
   private assets: ImageAsset[] = [];
   private assetChecked = new Set<string>();
   private expandedFolders = new Set<string>();
+  private expandedAssetReferences = new Set<string>();
   private assetsBusy = false;
   private scanToken = 0;
   // Signature of the last rendered item list — when an incoming rescan has
@@ -689,24 +690,71 @@ export class ImagePanelView extends ItemView {
 
     const meta = row.createDiv({ cls: "mdoss-meta" });
     const name = meta.createDiv({ cls: "mdoss-name mdoss-openable-text", text: asset.name });
-    name.setAttr("title", t().panel.assets.open);
+    setButtonTooltip(name, `${t().panel.assets.open}: ${asset.name}`);
     name.onclick = () => void this.openAsset(asset);
-    const sub = meta.createDiv({ cls: "mdoss-sub" });
-    const path = sub.createSpan({ cls: "mdoss-openable-text", text: asset.path });
-    path.setAttr("title", t().panel.assets.open);
-    path.onclick = () => void this.openAsset(asset);
-    const sub2 = meta.createDiv({ cls: "mdoss-sub" });
+    const sub2 = meta.createDiv({ cls: "mdoss-sub mdoss-asset-details" });
     sub2.createSpan({ text: fmtSize(asset.size) });
     sub2.createSpan({
       text: asset.references.length > 0
         ? t().panel.assets.refCount(asset.references.length)
         : t().panel.assets.noRefs,
     });
-
-    row.createSpan({
+    sub2.createSpan({
       cls: `mdoss-badge ${asset.status === "referenced" ? "is-local" : "is-missing"}`,
       text: asset.status === "referenced" ? t().panel.assets.badgeReferenced : t().panel.assets.badgeUnreferenced,
     });
+
+    const referenceSources = uniqueReferenceSources(asset);
+    if (referenceSources.length === 0) return;
+
+    const T = t().panel.assets;
+    const sourcesEl = row.createDiv({ cls: "mdoss-asset-references" });
+    sourcesEl.createDiv({ cls: "mdoss-asset-references-heading", text: T.referenceFiles(referenceSources.length) });
+    const list = sourcesEl.createEl("ul", { cls: "mdoss-asset-reference-list" });
+    list.setAttr("aria-label", T.referenceFiles(referenceSources.length));
+    const renderSources = () => {
+      list.empty();
+      const expanded = this.expandedAssetReferences.has(asset.path);
+      const visibleSources = expanded ? referenceSources : referenceSources.slice(0, 1);
+      for (const sourcePath of visibleSources) {
+        const item = list.createEl("li");
+        const source = item.createEl("button", {
+          cls: "mdoss-asset-reference",
+          attr: { type: "button" },
+        });
+        setButtonTooltip(source, `${T.openReference}: ${sourcePath}`);
+        const icon = source.createSpan({ cls: "mdoss-asset-reference-icon" });
+        icon.setAttr("aria-hidden", "true");
+        setIcon(icon, "file-text");
+        const label = source.createSpan({ cls: "mdoss-asset-reference-label" });
+        const separator = sourcePath.lastIndexOf("/");
+        label.createSpan({ cls: "mdoss-asset-reference-name", text: sourcePath.slice(separator + 1) });
+        if (separator >= 0) {
+          label.createSpan({ cls: "mdoss-asset-reference-folder", text: sourcePath.slice(0, separator) });
+        }
+        source.onclick = () => void this.openReference(sourcePath);
+      }
+    };
+    renderSources();
+
+    if (referenceSources.length > 1) {
+      const toggle = sourcesEl.createEl("button", {
+        cls: "mdoss-asset-reference-toggle",
+        attr: { type: "button" },
+      });
+      const updateToggle = () => {
+        const expanded = this.expandedAssetReferences.has(asset.path);
+        toggle.setText(expanded ? T.hideReferences : T.showMoreReferences(referenceSources.length - 1));
+        toggle.setAttr("aria-expanded", String(expanded));
+      };
+      updateToggle();
+      toggle.onclick = () => {
+        if (this.expandedAssetReferences.has(asset.path)) this.expandedAssetReferences.delete(asset.path);
+        else this.expandedAssetReferences.add(asset.path);
+        renderSources();
+        updateToggle();
+      };
+    }
   }
 
   private renderAssetFooter(parent: HTMLElement): void {
@@ -795,6 +843,11 @@ export class ImagePanelView extends ItemView {
 
   private async openAsset(asset: ImageAsset): Promise<void> {
     await this.app.workspace.getLeaf(false).openFile(asset.file);
+  }
+
+  private async openReference(sourcePath: string): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (file instanceof TFile) await this.app.workspace.getLeaf(false).openFile(file);
   }
 }
 
@@ -890,6 +943,11 @@ interface AssetTreeNode {
   path: string;
   folders: Map<string, AssetTreeNode>;
   assets: ImageAsset[];
+}
+
+/** A note may embed an image more than once; show each source file only once. */
+function uniqueReferenceSources(asset: ImageAsset): string[] {
+  return Array.from(new Set(asset.references.map((reference) => reference.sourcePath)));
 }
 
 function makeNode(name: string, path: string): AssetTreeNode {
