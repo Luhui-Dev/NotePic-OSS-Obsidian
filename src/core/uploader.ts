@@ -5,6 +5,7 @@
 
 import { requestUrl } from "obsidian";
 import { sha256Hex24 } from "../util/hash";
+import { t } from "../i18n";
 
 export interface UploaderConfig {
   accessKeyId: string;
@@ -172,7 +173,7 @@ function base64(bytes: Uint8Array): string {
 
 function ossError(status: number, body: string): Error & { status?: number; code?: string } {
   const code = extractXmlTag(body, "Code");
-  const message = extractXmlTag(body, "Message") || `OSS request failed with HTTP ${status}`;
+  const message = extractXmlTag(body, "Message") || t().reason.ossRequestFailed(status);
   const error = new Error(message) as Error & { status?: number; code?: string };
   error.status = status;
   if (code) error.code = code;

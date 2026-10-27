@@ -495,6 +495,8 @@ export class ImagePanelView extends ItemView {
       const downloaded = results.length - failures.length;
       new Notice(t().panel.downloadDone(downloaded, failures.length), 8000);
       if (failures.length > 0) new DownloadFailureModal(this.app, failures).open();
+    } catch (error) {
+      new Notice(t().panel.downloadError(error instanceof Error ? error.message : String(error)), 8000);
     } finally {
       this.downloadProgress = null;
       for (const key of keys) this.busyItems.delete(key);

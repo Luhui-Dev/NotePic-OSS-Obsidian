@@ -38,6 +38,8 @@ const en = {
     connectionFailed: (m: string) =>
       `NotePic OSS: connection failed — ${m}. If this looks like CORS, add a rule allowing PUT/HEAD/DELETE from the app:// origin.`,
     assetScanFailed: (m: string) => `NotePic OSS: vault image scan failed — ${m}`,
+    sidebarUnavailable: "NotePic OSS: unable to open the image manager in the right sidebar",
+    validationFailed: (m: string) => `NotePic OSS: ${m}`,
   },
   validation: {
     accessKeyId: "Access Key ID is required",
@@ -46,6 +48,7 @@ const en = {
     bucket: "Bucket is required",
   },
   settings: {
+    protocolVersion: (version: string) => `Protocol: ${version}`,
     section_credentials: "OSS credentials",
     section_upload: "Upload behaviour",
     section_connection: "Connection test",
@@ -135,6 +138,7 @@ const en = {
     downloadDone: (downloaded: number, failed: number) =>
       `NotePic OSS: downloaded ${downloaded} image(s)` + (failed > 0 ? `, failed ${failed}` : ""),
     downloadFolderError: (message: string) => `NotePic OSS: unable to choose download folder — ${message}`,
+    downloadError: (message: string) => `NotePic OSS: unable to download images — ${message}`,
     kind_wikilink: "![[wikilink]]",
     kind_md: "![]()",
     kind_html: "<img>",
@@ -180,6 +184,13 @@ const en = {
     copied: "Copied ✓",
     close: "Close",
   },
+  download: {
+    desktopOnly: "This action is available only in the Obsidian desktop app.",
+    folderPickerUnavailable: "Could not open the system folder picker.",
+    imageUnavailable: "Image is no longer available.",
+    folderPickerTitle: "Choose a folder to save images",
+    folderPickerButton: "Save here",
+  },
   downloadFailure: {
     title: (n: number) => `Download failed for ${n} image(s)`,
     noReason: "(no reason given)",
@@ -188,6 +199,8 @@ const en = {
     close: "Close",
   },
   reason: {
+    httpError: (status: number) => `Request failed (HTTP ${status})`,
+    ossRequestFailed: (status: number) => `OSS request failed (HTTP ${status})`,
     notFound: (raw: string) => `not found: ${raw}`,
     alreadyOss: "already on OSS",
     remoteSkip: "remote (toggle to upload)",
@@ -219,6 +232,8 @@ const zh: typeof en = {
     connectionFailed: (m: string) =>
       `NotePic OSS：连接失败 — ${m}。如果看起来像跨域问题，请到 Bucket 的 CORS 设置里允许来自 app:// 的 PUT/HEAD/DELETE。`,
     assetScanFailed: (m: string) => `NotePic OSS：扫描 Vault 图片失败 — ${m}`,
+    sidebarUnavailable: "NotePic OSS：无法在右侧栏打开图片管理面板",
+    validationFailed: (m: string) => `NotePic OSS：${m}`,
   },
   validation: {
     accessKeyId: "Access Key ID 必填",
@@ -227,6 +242,7 @@ const zh: typeof en = {
     bucket: "Bucket 必填",
   },
   settings: {
+    protocolVersion: (version: string) => `协议版本：${version}`,
     section_credentials: "OSS 凭据",
     section_upload: "上传行为",
     section_connection: "连接测试",
@@ -314,6 +330,7 @@ const zh: typeof en = {
     downloadDone: (downloaded: number, failed: number) =>
       `NotePic OSS：已下载 ${downloaded} 张图片` + (failed > 0 ? `，失败 ${failed} 张` : ""),
     downloadFolderError: (message: string) => `NotePic OSS：无法选择下载文件夹 — ${message}`,
+    downloadError: (message: string) => `NotePic OSS：无法下载图片 — ${message}`,
     kind_wikilink: "![[wiki 链接]]",
     kind_md: "![]()",
     kind_html: "<img>",
@@ -359,6 +376,13 @@ const zh: typeof en = {
     copied: "已复制 ✓",
     close: "关闭",
   },
+  download: {
+    desktopOnly: "此操作仅支持 Obsidian 桌面端。",
+    folderPickerUnavailable: "无法打开系统文件夹选择器。",
+    imageUnavailable: "图片已不可用。",
+    folderPickerTitle: "选择图片保存文件夹",
+    folderPickerButton: "保存到此处",
+  },
   downloadFailure: {
     title: (n: number) => `${n} 张图片下载失败`,
     noReason: "（未提供原因）",
@@ -367,6 +391,8 @@ const zh: typeof en = {
     close: "关闭",
   },
   reason: {
+    httpError: (status: number) => `请求失败（HTTP ${status}）`,
+    ossRequestFailed: (status: number) => `OSS 请求失败（HTTP ${status}）`,
     notFound: (raw: string) => `未找到：${raw}`,
     alreadyOss: "已在 OSS",
     remoteSkip: "外链（开启对应选项后才会上传）",

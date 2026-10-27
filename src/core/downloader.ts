@@ -1,5 +1,6 @@
-import { App, requestUrl, TFile } from "obsidian";
+import { App, requestUrl } from "obsidian";
 import type { ScannedItem } from "./pipeline";
+import { t } from "../i18n";
 
 export interface DownloadResult {
   item: ScannedItem;
@@ -34,7 +35,7 @@ async function uniquePath(folder: string, filename: string, writer: FileWriter):
 
 function getFileWriter(): FileWriter {
   const desktopRequire = (window as unknown as { require?: (id: string) => unknown }).require;
-  if (!desktopRequire) throw new Error("This action is available only in the Obsidian desktop app.");
+  if (!desktopRequire) throw new Error(t().download.desktopOnly);
   const fs = desktopRequire("fs/promises") as {
     access(path: string): Promise<void>;
     writeFile(path: string, data: Uint8Array): Promise<void>;
@@ -48,8 +49,8 @@ function getFileWriter(): FileWriter {
 }
 
 async function readRemote(url: string): Promise<Uint8Array> {
-  const response = await requestUrl(url);
-  if (response.status < 200 || response.status >= 300) throw new Error(`HTTP ${response.status}`);
+  const response = await requestUrl({ url, throw: false });
+  if (response.status < 200 || response.status >= 300) throw new Error(t().reason.httpError(response.status));
   return new Uint8Array(response.arrayBuffer);
 }
 
@@ -75,7 +76,7 @@ export async function downloadSelected(
         filename = filenameFromUrl(resolved.url);
         bytes = await readRemote(resolved.url);
       } else {
-        throw new Error("Image is no longer available");
+        throw new Error(t().download.imageUnavailable);
       }
       const path = await uniquePath(folder, filename, writer);
       await writer.write(path, bytes);
@@ -96,7 +97,7 @@ export async function downloadSelected(
 
 export function pickDownloadFolder(): Promise<string | null> {
   const desktopRequire = (window as unknown as { require?: (id: string) => unknown }).require;
-  if (!desktopRequire) return Promise.reject(new Error("This action is available only in the Obsidian desktop app."));
+  if (!desktopRequire) return Promise.reject(new Error(t().download.desktopOnly));
   const electron = desktopRequire("electron") as { remote?: { dialog?: ElectronDialog } };
   let dialog = electron.remote?.dialog;
   if (!dialog) {
@@ -104,11 +105,15 @@ export function pickDownloadFolder(): Promise<string | null> {
       dialog = (desktopRequire("@electron/remote") as { dialog?: ElectronDialog }).dialog;
     } catch { /* Obsidian may expose Electron remote directly instead. */ }
   }
-  if (!dialog) return Promise.reject(new Error("Could not open the system folder picker."));
-  return dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] })
+  if (!dialog) return Promise.reject(new Error(t().download.folderPickerUnavailable));
+  return dialog.showOpenDialog({
+    title: t().download.folderPickerTitle,
+    buttonLabel: t().download.folderPickerButton,
+    properties: ["openDirectory", "createDirectory"],
+  })
     .then((result) => result.canceled ? null : (result.filePaths[0] ?? null));
 }
 
 interface ElectronDialog {
-  showOpenDialog(options: { properties: string[] }): Promise<{ canceled: boolean; filePaths: string[] }>;
+  showOpenDialog(options: { title: string; buttonLabel: string; properties: string[] }): Promise<{ canceled: boolean; filePaths: string[] }>;
 }
