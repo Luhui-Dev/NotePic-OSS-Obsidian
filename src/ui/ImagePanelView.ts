@@ -651,54 +651,71 @@ export class ImagePanelView extends ItemView {
 
     const meta = row.createDiv({ cls: "mdoss-meta" });
     const name = meta.createDiv({ cls: "mdoss-name mdoss-openable-text", text: asset.name });
-    name.setAttr("title", t().panel.assets.open);
+    setButtonTooltip(name, `${t().panel.assets.open}: ${asset.name}`);
     name.onclick = () => void this.openAsset(asset);
-    const sub = meta.createDiv({ cls: "mdoss-sub" });
-    const path = sub.createSpan({ cls: "mdoss-openable-text", text: asset.path });
-    path.setAttr("title", t().panel.assets.open);
-    path.onclick = () => void this.openAsset(asset);
-    const sub2 = meta.createDiv({ cls: "mdoss-sub" });
+    const sub2 = meta.createDiv({ cls: "mdoss-sub mdoss-asset-details" });
     sub2.createSpan({ text: fmtSize(asset.size) });
     sub2.createSpan({
       text: asset.references.length > 0
         ? t().panel.assets.refCount(asset.references.length)
         : t().panel.assets.noRefs,
     });
-
-    const referenceSources = uniqueReferenceSources(asset);
-    if (referenceSources.length > 0) {
-      const sourcesEl = meta.createDiv({ cls: "mdoss-asset-references" });
-      const expanded = this.expandedAssetReferences.has(asset.path);
-      const visibleSources = expanded ? referenceSources : referenceSources.slice(0, 1);
-
-      for (const sourcePath of visibleSources) {
-        const source = sourcesEl.createEl("button", {
-          cls: "mdoss-asset-reference",
-          text: sourcePath,
-        });
-        source.setAttr("title", t().panel.assets.openReference);
-        source.onclick = () => void this.openReference(sourcePath);
-      }
-
-      if (referenceSources.length > 1) {
-        const toggle = sourcesEl.createEl("button", {
-          cls: "mdoss-asset-reference-toggle",
-          text: expanded
-            ? t().panel.assets.hideReferences
-            : t().panel.assets.showMoreReferences(referenceSources.length - 1),
-        });
-        toggle.onclick = () => {
-          if (expanded) this.expandedAssetReferences.delete(asset.path);
-          else this.expandedAssetReferences.add(asset.path);
-          this.render();
-        };
-      }
-    }
-
-    row.createSpan({
+    sub2.createSpan({
       cls: `mdoss-badge ${asset.status === "referenced" ? "is-local" : "is-missing"}`,
       text: asset.status === "referenced" ? t().panel.assets.badgeReferenced : t().panel.assets.badgeUnreferenced,
     });
+
+    const referenceSources = uniqueReferenceSources(asset);
+    if (referenceSources.length === 0) return;
+
+    const T = t().panel.assets;
+    const sourcesEl = row.createDiv({ cls: "mdoss-asset-references" });
+    sourcesEl.createDiv({ cls: "mdoss-asset-references-heading", text: T.referenceFiles(referenceSources.length) });
+    const list = sourcesEl.createEl("ul", { cls: "mdoss-asset-reference-list" });
+    list.setAttr("aria-label", T.referenceFiles(referenceSources.length));
+    const renderSources = () => {
+      list.empty();
+      const expanded = this.expandedAssetReferences.has(asset.path);
+      const visibleSources = expanded ? referenceSources : referenceSources.slice(0, 1);
+      for (const sourcePath of visibleSources) {
+        const item = list.createEl("li");
+        const source = item.createEl("button", {
+          cls: "mdoss-asset-reference",
+          attr: { type: "button" },
+        });
+        setButtonTooltip(source, `${T.openReference}: ${sourcePath}`);
+        const icon = source.createSpan({ cls: "mdoss-asset-reference-icon" });
+        icon.setAttr("aria-hidden", "true");
+        setIcon(icon, "file-text");
+        const label = source.createSpan({ cls: "mdoss-asset-reference-label" });
+        const separator = sourcePath.lastIndexOf("/");
+        label.createSpan({ cls: "mdoss-asset-reference-name", text: sourcePath.slice(separator + 1) });
+        if (separator >= 0) {
+          label.createSpan({ cls: "mdoss-asset-reference-folder", text: sourcePath.slice(0, separator) });
+        }
+        source.onclick = () => void this.openReference(sourcePath);
+      }
+    };
+    renderSources();
+
+    if (referenceSources.length > 1) {
+      const toggle = sourcesEl.createEl("button", {
+        cls: "mdoss-asset-reference-toggle",
+        attr: { type: "button" },
+      });
+      const updateToggle = () => {
+        const expanded = this.expandedAssetReferences.has(asset.path);
+        toggle.setText(expanded ? T.hideReferences : T.showMoreReferences(referenceSources.length - 1));
+        toggle.setAttr("aria-expanded", String(expanded));
+      };
+      updateToggle();
+      toggle.onclick = () => {
+        if (this.expandedAssetReferences.has(asset.path)) this.expandedAssetReferences.delete(asset.path);
+        else this.expandedAssetReferences.add(asset.path);
+        renderSources();
+        updateToggle();
+      };
+    }
   }
 
   private renderAssetFooter(parent: HTMLElement): void {
