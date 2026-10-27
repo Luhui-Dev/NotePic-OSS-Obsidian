@@ -214,8 +214,6 @@ export class ImagePanelView extends ItemView {
 
     this.renderHeader(contentEl);
 
-    this.renderModeTabs(contentEl);
-
     if (this.mode === "assets") {
       this.renderAssets(contentEl);
       return;
@@ -229,6 +227,9 @@ export class ImagePanelView extends ItemView {
       this.renderEmpty(contentEl, t().panel.emptyUnsupported);
       return;
     }
+    const titleText = t().panel.titleWithFile(this.currentFile.basename, this.items.length);
+    const title = contentEl.createDiv({ cls: "mdoss-panel-title", text: titleText });
+    title.setAttr("title", titleText);
     if (this.items.length === 0) {
       this.renderEmpty(contentEl, t().panel.emptyNoImages);
       return;
@@ -243,12 +244,7 @@ export class ImagePanelView extends ItemView {
   private renderHeader(parent: HTMLElement): void {
     const T = t().panel;
     const header = parent.createDiv({ cls: "mdoss-panel-header" });
-    const title = header.createDiv({ cls: "mdoss-panel-title" });
-    if (this.currentFile && isSupported(this.currentFile)) {
-      title.setText(T.titleWithFile(this.currentFile.basename, this.items.length));
-    } else {
-      title.setText(T.title);
-    }
+    this.renderModeTabs(header);
 
     const actions = header.createDiv({ cls: "mdoss-panel-actions" });
     const refresh = actions.createEl("button", { cls: "clickable-icon mdoss-panel-icon-btn" });
@@ -267,6 +263,7 @@ export class ImagePanelView extends ItemView {
     for (const [mode, label] of options) {
       const tab = tabs.createEl("button", { text: label });
       tab.addClass("mdoss-panel-tab");
+      tab.setAttr("aria-pressed", String(mode === this.mode));
       if (mode === this.mode) tab.addClass("is-active");
       tab.onclick = () => {
         if (this.mode === mode) return;

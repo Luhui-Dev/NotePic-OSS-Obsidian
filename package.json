@@ -1,6 +1,6 @@
 {
   "name": "notepic-oss-obsidian",
-  "version": "2.13.2",
+  "version": "1.13.3",
   "private": true,
   "description": "Obsidian plugin that uploads images in the current note to Aliyun OSS and rewrites links in place.",
   "main": "main.js",

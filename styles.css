@@ -222,6 +222,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .mdoss-panel-title {
@@ -230,7 +231,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .mdoss-panel-actions {
@@ -241,26 +242,43 @@
 
 .mdoss-panel-tabs {
   display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 0.25rem;
   padding: 0.15rem;
   border-radius: 6px;
   background: var(--background-secondary);
 }
 
-.mdoss-panel-tab {
+.mdoss-panel-tabs > button.mdoss-panel-tab {
   flex: 1;
-  border: 0;
+  min-width: 0;
+  height: auto;
+  border: 1px solid transparent;
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
   background: transparent;
+  box-shadow: none;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   cursor: pointer;
+  white-space: normal;
 }
 
-.mdoss-panel-tab.is-active {
-  background: var(--background-primary);
-  color: var(--text-normal);
+.mdoss-panel-tabs > button.mdoss-panel-tab:hover {
+  background: var(--background-modifier-hover);
+}
+
+.mdoss-panel-tabs > button.mdoss-panel-tab.is-active,
+.mdoss-panel-tabs > button.mdoss-panel-tab.is-active:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+.mdoss-panel-tabs > button.mdoss-panel-tab:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
 }
 
 .mdoss-panel-icon-btn {
