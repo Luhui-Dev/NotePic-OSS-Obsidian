@@ -53,6 +53,13 @@ export class ImagePanelView extends ItemView {
   // for everything, which is fine for display purposes.
   private displayUploader: Uploader | null = null;
   private downloadProgress: { done: number; total: number } | null = null;
+  private noteFooter: {
+    counter: HTMLElement;
+    upload: HTMLButtonElement;
+    uploadLabel: HTMLElement;
+    download: HTMLButtonElement;
+    downloadLabel: HTMLElement;
+  } | null = null;
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: NotePicOssPlugin) {
     super(leaf);
@@ -202,6 +209,7 @@ export class ImagePanelView extends ItemView {
   private render(): void {
     const { contentEl } = this;
     contentEl.empty();
+    this.noteFooter = null;
     contentEl.addClass("mdoss-panel");
 
     this.renderHeader(contentEl);
@@ -384,7 +392,7 @@ export class ImagePanelView extends ItemView {
   }
 
   private renderFooter(parent: HTMLElement): void {
-    const footer = parent.createDiv({ cls: "mdoss-footer mdoss-panel-footer" });
+    const footer = parent.createDiv({ cls: "mdoss-footer mdoss-panel-footer mdoss-panel-note-footer" });
     const counter = footer.createSpan({ cls: "mdoss-panel-counter", text: "" });
     const deleteLocalLabel = footer.createEl("label", { cls: "mdoss-panel-delete-local" });
     const deleteLocal = deleteLocalLabel.createEl("input", { type: "checkbox" });
@@ -393,28 +401,40 @@ export class ImagePanelView extends ItemView {
       this.plugin.settings.panelDeleteLocalAfterUpload = deleteLocal.checked;
       void this.plugin.saveSettings();
     };
-    deleteLocalLabel.appendText(t().panel.deleteLocalAfterUpload);
-    const go = footer.createEl("button", { text: "" });
-    go.addClass("mod-cta");
+    deleteLocalLabel.createSpan({ text: t().panel.deleteLocalAfterUpload });
+    const go = footer.createEl("button", { cls: "mod-cta mdoss-panel-batch-action" });
+    const uploadIcon = go.createSpan({ cls: "mdoss-panel-action-icon" });
+    uploadIcon.setAttr("aria-hidden", "true");
+    setIcon(uploadIcon, "upload");
+    const uploadLabel = go.createSpan({ cls: "mdoss-panel-action-label" });
     go.onclick = () => void this.uploadSelectedItems();
-    const download = footer.createEl("button", { text: "" });
+    const download = footer.createEl("button", { cls: "mdoss-panel-batch-action" });
+    const downloadIcon = download.createSpan({ cls: "mdoss-panel-action-icon" });
+    downloadIcon.setAttr("aria-hidden", "true");
+    setIcon(downloadIcon, "download");
+    const downloadLabel = download.createSpan({ cls: "mdoss-panel-action-label" });
     download.onclick = () => void this.downloadSelectedItems();
-    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement; _download: HTMLButtonElement })._counter = counter;
-    (this as unknown as { _counter: HTMLElement; _go: HTMLButtonElement; _download: HTMLButtonElement })._go = go;
-    (this as unknown as { _download: HTMLButtonElement })._download = download;
+    this.noteFooter = { counter, upload: go, uploadLabel, download, downloadLabel };
     this.updateFooter();
   }
 
   private updateFooter(): void {
-    const ref = this as unknown as { _counter?: HTMLElement; _go?: HTMLButtonElement; _download?: HTMLButtonElement };
-    if (!ref._counter || !ref._go || !ref._download) return;
+    const footer = this.noteFooter;
+    if (!footer) return;
     const T = t().panel;
     const n = this.checked.size;
-    ref._counter.setText(this.downloadProgress ? T.downloading(this.downloadProgress.done, this.downloadProgress.total) : T.selected(n));
-    ref._go.setText(n > 0 ? T.uploadN(n) : T.upload);
-    ref._go.disabled = n === 0;
-    ref._download.setText(n > 0 ? T.downloadN(n) : T.download);
-    ref._download.disabled = n === 0 || this.downloadProgress !== null;
+    const progress = this.downloadProgress;
+    const counterText = progress ? T.downloading(progress.done, progress.total) : T.selected(n);
+    footer.counter.setText(counterText);
+    footer.counter.setAttr("title", counterText);
+    const uploadText = n > 0 ? T.uploadN(n) : T.upload;
+    const downloadText = progress ? T.downloading(progress.done, progress.total) : n > 0 ? T.downloadN(n) : T.download;
+    footer.uploadLabel.setText(uploadText);
+    footer.downloadLabel.setText(downloadText);
+    setButtonTooltip(footer.upload, uploadText);
+    setButtonTooltip(footer.download, downloadText);
+    footer.upload.disabled = n === 0;
+    footer.download.disabled = n === 0 || progress !== null;
   }
 
   // ---- actions ------------------------------------------------------------

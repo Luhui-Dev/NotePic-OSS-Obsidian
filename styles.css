@@ -209,6 +209,7 @@
 /* --- Side panel (ImagePanelView) ------------------------------------ */
 
 .mdoss-panel {
+  container: mdoss-panel / inline-size;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
@@ -361,6 +362,90 @@
   font-size: var(--font-ui-smaller);
   white-space: nowrap;
   cursor: pointer;
+}
+
+/* Use the sidebar's width, independently of the main window's width. */
+.mdoss-panel-note-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.mdoss-panel-note-footer .mdoss-panel-counter {
+  min-width: 0;
+  margin-right: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mdoss-panel-note-footer .mdoss-panel-delete-local {
+  min-width: 0;
+}
+
+.mdoss-panel-delete-local input {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.mdoss-panel-batch-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 2rem;
+  white-space: nowrap;
+}
+
+.mdoss-panel-action-icon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mdoss-panel-action-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+@container mdoss-panel (max-width: 520px) {
+  .mdoss-panel-note-footer {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .mdoss-panel-note-footer .mdoss-panel-counter {
+    grid-column: 1 / -1;
+  }
+
+  .mdoss-panel-note-footer .mdoss-panel-delete-local {
+    white-space: normal;
+  }
+}
+
+@container mdoss-panel (max-width: 360px) {
+  .mdoss-panel-batch-action {
+    padding-inline: 0.5rem;
+  }
+
+  .mdoss-panel-action-icon {
+    display: inline-flex;
+  }
+
+  .mdoss-panel-action-label {
+    display: none;
+  }
+}
+
+@container mdoss-panel (max-width: 240px) {
+  .mdoss-panel-note-footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mdoss-panel-note-footer .mdoss-panel-delete-local {
+    grid-column: 1 / -1;
+  }
 }
 
 .mdoss-assets-summary {
